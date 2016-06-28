@@ -1,3 +1,7 @@
+"""
+
+"""
+# pylint: disable=fixme,redefined-builtin,global-statement,broad-except
 from __future__ import print_function
 from collections import defaultdict
 import datetime
@@ -11,20 +15,30 @@ import sys
 # global variable available to be used by the test suite modules
 SUBMITTY_INSTALL_DIR = "__INSTALL__FILLIN__SUBMITTY_INSTALL_DIR__"
 
-GRADING_SOURCE_DIR =  SUBMITTY_INSTALL_DIR + "/src/grading"
+GRADING_SOURCE_DIR = SUBMITTY_INSTALL_DIR + "/src/grading"
 
 LOG_FILE = None
 LOG_DIR = SUBMITTY_INSTALL_DIR + "/test_suite/log"
 
 
 def print(*args, **kwargs):
+    """
+    Define the builtin print function such that in addition to outputting to the the stdout, we
+    also log the message into a file that is timestamped in case we want to review the output
+    from running the test suite
+
+    :param args: strings to print
+    :param kwargs: map of arguments for the string. 'end' for what should be appended to the end
+    of the string and 'sep' for what should seperate the various *args
+    :return:
+    """
     global LOG_FILE
     if "sep" not in kwargs:
         kwargs["sep"] = " "
     if "end" not in kwargs:
         kwargs["end"] = '\n'
 
-    message = kwargs["sep"].join(map(str, args)) + kwargs["end"]
+    message = kwargs["sep"].join([str(i) for i in args]) + kwargs["end"]
     if LOG_FILE is None:
         # include a couple microseconds in string so that we have unique log file
         # per test run
@@ -34,46 +48,51 @@ def print(*args, **kwargs):
     sys.stdout.write(message)
 
 
-class TestcaseFile:
+class TestcaseFile(object):
+    # pylint: disable=too-few-public-methods
     def __init__(self):
         self.prebuild = lambda: None
         self.testcases = []
 
-to_run = defaultdict(lambda: TestcaseFile(), {})
+TO_RUN = defaultdict(lambda: TestcaseFile())  # pylint: disable=unnecessary-lambda
+
 
 # Helpers for color
-class ASCIIEscapeManager:
+class ASCIIEscapeManager(object):
+    # pylint: disable=too-few-public-methods
     def __init__(self, codes):
-        self.codes = map(str, codes)
+        self.codes = [str(code) for code in codes]
+
     def __enter__(self):
         sys.stdout.write("\033[" + ";".join(self.codes) + "m")
-    def __exit__(self, exc_type, exc_value, traceback):
+
+    def __exit__(self, exc_type, exc_value, trace_back):
         sys.stdout.write("\033[0m")
+
     def __add__(self, other):
         return ASCIIEscapeManager(self.codes + other.codes)
 
-bold = ASCIIEscapeManager([1])
-underscore = ASCIIEscapeManager([4])
-blink = ASCIIEscapeManager([5])
+BOLD = ASCIIEscapeManager([1])
+UNDERSCORE = ASCIIEscapeManager([4])
+BLINK = ASCIIEscapeManager([5])
 
-black = ASCIIEscapeManager([30])
-red = ASCIIEscapeManager([31])
-green = ASCIIEscapeManager([32])
-yellow = ASCIIEscapeManager([33])
-blue = ASCIIEscapeManager([34])
-magenta = ASCIIEscapeManager([35])
-cyan = ASCIIEscapeManager([36])
-white = ASCIIEscapeManager([37])
+BLACK = ASCIIEscapeManager([30])
+RED = ASCIIEscapeManager([31])
+GREEN = ASCIIEscapeManager([32])
+YELLOW = ASCIIEscapeManager([33])
+BLUE = ASCIIEscapeManager([34])
+MAGENTA = ASCIIEscapeManager([35])
+CYAN = ASCIIEscapeManager([36])
+WHITE = ASCIIEscapeManager([37])
 
 
 # Run the given list of test case names
 def run_tests(names):
-    success = True
     totalmodules = len(names)
     for key in names:
-        val = to_run[key]
+        val = TO_RUN[key]
         modsuccess = True
-        with bold:
+        with BOLD:
             print("--- BEGIN TEST MODULE " + key.upper() + " ---")
         cont = True
         try:
@@ -81,49 +100,52 @@ def run_tests(names):
             val.prebuild()
             val.wrapper.build()
             print("* Finished compilation")
-        except Exception as e:
-            print("Build failed with exception: %s" % e)
+        except Exception as exception:
+            print("Build failed with exception: %s" % str(exception))
             modsuccess = False
             cont = False
         if cont:
             total = len(val.testcases)
-            for index, f in zip(xrange(1, total + 1), val.testcases):
+            for index, func in zip(range(1, total + 1), val.testcases):
                 try:
-                    f()
-                except Exception as e:
-                    with bold + red:
+                    func()
+                except Exception as exception:
+                    with BOLD + RED:
                         lineno = None
-                        tb = traceback.extract_tb(sys.exc_info()[2])
-                        for i in range(len(tb)-1, -1, -1):
-                            if os.path.basename(tb[i][0]) == '__init__.py':
-                                lineno = tb[i][1]
-                        print("Testcase " + str(index) + " failed on line " + str(lineno) + " with exception: ", e)
+                        trace = traceback.extract_tb(sys.exc_info()[2])
+                        # Go through the trace to find exactly when __init__.py threw an exception
+                        # as that would be coming from the running test module
+                        for i in range(len(trace)-1, -1, -1):
+                            if os.path.basename(trace[i][0]) == '__init__.py':
+                                lineno = trace[i][1]
+                        print("Testcase " + str(index) + " failed on line " + str(lineno) +
+                              " with exception: ", exception)
                         sys.exc_info()
                         total -= 1
             if total == len(val.testcases):
-                with bold + green:
+                with BOLD + GREEN:
                     print("All testcases passed")
             else:
-                with bold + red:
+                with BOLD + RED:
                     print(str(total) + "/" + str(len(val.testcases)) + " testcases passed")
                     modsuccess = False
-                    success = False
-        with bold:
+        with BOLD:
             print("--- END TEST MODULE " + key.upper() + " ---")
         print()
         if not modsuccess:
             totalmodules -= 1
     if totalmodules == len(names):
-        with bold + green:
+        with BOLD + GREEN:
             print("All modules passed")
     else:
-        with bold + red:
+        with BOLD + RED:
             print(str(totalmodules) + "/" + str(len(names)) + " modules passed")
         sys.exit(1)
 
+
 # Run every test currently loaded
 def run_all():
-    run_tests(to_run.keys())
+    run_tests(TO_RUN.keys())
 
 
 # Helper class used to remove the burden of paths from the testcase author.
@@ -145,8 +167,6 @@ class TestcaseWrapper:
     # directory when compiling source files in bulk in this manner. The solution
     # is likely to run the compiler with a different working directory alongside
     # using relative paths.
-
-
     def build(self):
         try:
             # the log directory will contain various log files
@@ -155,93 +175,97 @@ class TestcaseWrapper:
             os.mkdir(os.path.join(self.testcase_path, "build"))
             # the bin directory will contain the autograding executables
             os.mkdir(os.path.join(self.testcase_path, "bin"))
-        except OSError as e:
+        except OSError:
             pass
         # copy the cmake file to the build directory
         subprocess.call(["cp",
-            os.path.join(GRADING_SOURCE_DIR, "Sample_CMakeLists.txt"),
-            os.path.join(self.testcase_path, "build", "CMakeLists.txt")])
-        with open(os.path.join(self.testcase_path, "log", "cmake_output.txt"), "w") as cmake_output:
+                         os.path.join(GRADING_SOURCE_DIR, "Sample_CMakeLists.txt"),
+                         os.path.join(self.testcase_path, "build", "CMakeLists.txt")])
+        filename = os.path.join(self.testcase_path, "log", "cmake_output.txt")
+        with open(filename, "w") as cmake_output:
             return_code = subprocess.call(["cmake", "-DASSIGNMENT_INSTALLATION=OFF", "."],
-                    cwd=os.path.join(self.testcase_path, "build"), stdout=cmake_output, stderr=cmake_output)
+                                          cwd=os.path.join(self.testcase_path, "build"),
+                                          stdout=cmake_output, stderr=cmake_output)
             if return_code != 0:
                 raise RuntimeError("Build (cmake) exited with exit code " + str(return_code))
         with open(os.path.join(self.testcase_path, "log", "make_output.txt"), "w") as make_output:
             return_code = subprocess.call(["make"],
-                    cwd=os.path.join(self.testcase_path, "build"), stdout=make_output, stderr=make_output)
+                                          cwd=os.path.join(self.testcase_path, "build"),
+                                          stdout=make_output, stderr=make_output)
             if return_code != 0:
                 raise RuntimeError("Build (make) exited with exit code " + str(return_code))
 
-
-
     # Run compile.out using some sane arguments.
     def run_compile(self):
-        with open (os.path.join(self.testcase_path, "log", "compile_output.txt"), "w") as log:
+        with open(os.path.join(self.testcase_path, "log", "compile_output.txt"), "w") as log:
             return_code = subprocess.call([os.path.join(self.testcase_path, "bin", "compile.out"),
-                "testassignment", "testuser", "1", "0"], \
-                        cwd=os.path.join(self.testcase_path, "data"), stdout=log, stderr=log)
+                                           "testassignment", "testuser", "1", "0"],
+                                          cwd=os.path.join(self.testcase_path, "data"), stdout=log,
+                                          stderr=log)
             if return_code != 0:
                 raise RuntimeError("Compile exited with exit code " + str(return_code))
 
-
     # Run run.out using some sane arguments.
     def run_run(self):
-        with open (os.path.join(self.testcase_path, "log", "run_output.txt"), "w") as log:
+        with open(os.path.join(self.testcase_path, "log", "run_output.txt"), "w") as log:
             return_code = subprocess.call([os.path.join(self.testcase_path, "bin", "run.out"),
-                "testassignment", "testuser", "1", "0"], \
-                        cwd=os.path.join(self.testcase_path, "data"), stdout=log, stderr=log)
+                                           "testassignment", "testuser", "1", "0"],
+                                          cwd=os.path.join(self.testcase_path, "data"),
+                                          stdout=log, stderr=log)
             if return_code != 0:
                 raise RuntimeError("run.out exited with exit code " + str(return_code))
-
 
     # Run the validator using some sane arguments. Likely wants to be made much more
     # customizable (different submission numbers, multiple users, etc.)
     # TODO: Read "main" for other executables, determine what files they expect and
     # the locations in which they expect them given different inputs.
     def run_validator(self):
-        with open (os.path.join(self.testcase_path, "log", "validate_output.txt"), "w") as log:
+        with open(os.path.join(self.testcase_path, "log", "validate_output.txt"), "w") as log:
             return_code = subprocess.call([os.path.join(self.testcase_path, "bin", "validate.out"),
-                "testassignment", "testuser", "1", "0"],
-                cwd=os.path.join(self.testcase_path, "data"), stdout=log, stderr=log)
+                                           "testassignment", "testuser", "1", "0"],
+                                          cwd=os.path.join(self.testcase_path, "data"), stdout=log,
+                                          stderr=log)
             if return_code != 0:
                 raise RuntimeError("Validator exited with exit code " + str(return_code))
-
 
     # Run the UNIX diff command given a filename. The files are compared between the
     # data folder and the validation folder within the test package. For example,
     # running test.diff("foo.txt") within the test package "test_foo", the files
     # /var/local/autograde_tests/tests/test_foo/data/foo.txt and
     # /var/local/autograde_tests/tests/test_foo/validation/foo.txt will be compared.
-    def diff(self, f1, f2=""):
+    def diff(self, file1, file2=""):
         # if only 1 filename provided...
-        if not f2:
-            f2 = f1
+        if not file2:
+            file2 = file1
         # if no directory provided...
-        if not os.path.dirname(f1):
-            f1 = os.path.join("data", f1)
-        if not os.path.dirname(f2):
-            f2 = os.path.join("validation", f2)
+        if not os.path.dirname(file1):
+            file1 = os.path.join("data", file1)
+        if not os.path.dirname(file2):
+            file2 = os.path.join("validation", file2)
 
-        filename1 = os.path.join(self.testcase_path, f1)
-        filename2 = os.path.join(self.testcase_path, f2)
+        filename1 = os.path.join(self.testcase_path, file1)
+        filename2 = os.path.join(self.testcase_path, file2)
 
         if not os.path.isfile(filename1):
             raise RuntimeError("File " + filename1 + " does not exist")
         if not os.path.isfile(filename2):
             raise RuntimeError("File " + filename2 + " does not exist")
 
-        #return_code = subprocess.call(["diff", "-b", filename1, filename2]) #ignores changes in white space
-        process = subprocess.Popen(["diff", filename1, filename2], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        out, err = process.communicate()
+        # return_code = subprocess.call(["diff", "-b", filename1, filename2]) #ignores changes in
+        # white space
+        process = subprocess.Popen(["diff", filename1, filename2], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        out, _ = process.communicate()
         if process.returncode == 1:
-            raise RuntimeError("Difference between " + filename1 + " and " + filename2 +
-            " exited with exit code " + str(process.returncode) + '\n\nDiff:\n' + out)
-
+            raise RuntimeError("Difference between " + filename1 + " and " + filename2 + " exited "
+                               "with exit code " + str(process.returncode) + '\n\nDiff:\n' +
+                               out.decode())
 
     # Helper function for json_diff.  Sorts each nested list.  Allows comparison.
     # Credit: Zero Piraeus.
-    # http://stackoverflow.com/questions/25851183/how-to-compare-two-json-objects-with-the-same-elements-in-a-different-order-equa
-    def json_ordered(self,obj):
+    # http://stackoverflow.com/questions/25851183/how-to-compare-two-json-objects-with-the-same-
+    # elements-in-a-different-order-equa
+    def json_ordered(self, obj):
         if isinstance(obj, dict):
             return sorted((k, self.json_ordered(v)) for k, v in obj.items())
         if isinstance(obj, list):
@@ -252,18 +276,18 @@ class TestcaseWrapper:
     # Compares two json files allowing differences in file whitespace
     # (indentation, newlines, etc) and also alternate ordering of data
     # inside dictionary/key-value pairs
-    def json_diff(self, f1, f2=""):
+    def json_diff(self, filename1, filename2=""):
         # if only 1 filename provided...
-        if not f2:
-            f2 = f1
+        if not filename2:
+            filename2 = filename1
         # if no directory provided...
-        if not os.path.dirname(f1):
-            f1 = os.path.join("data", f1)
-        if not os.path.dirname(f2):
-            f2 = os.path.join("validation", f2)
+        if not os.path.dirname(filename1):
+            filename1 = os.path.join("data", filename1)
+        if not os.path.dirname(filename2):
+            filename2 = os.path.join("validation", filename2)
 
-        filename1 = os.path.join(self.testcase_path, f1)
-        filename2 = os.path.join(self.testcase_path, f2)
+        filename1 = os.path.join(self.testcase_path, filename1)
+        filename2 = os.path.join(self.testcase_path, filename2)
 
         if not os.path.isfile(filename1):
             raise RuntimeError("File " + filename1 + " does not exist")
@@ -271,44 +295,46 @@ class TestcaseWrapper:
             raise RuntimeError("File " + filename2 + " does not exist")
 
         with open(filename1) as file1:
-            contents1 = json.loads(file1.read())
+            contents1 = json.load(file1)
         with open(filename2) as file2:
-            contents2 = json.loads(file2.read())
+            contents2 = json.load(file2)
         if self.json_ordered(contents1) != self.json_ordered(contents2):
             raise RuntimeError("JSON files " + filename1 + " and " + filename2 + " are different")
 
-    def empty_file(self, f):
+    def empty_file(self, filename):
         # if no directory provided...
-        if not os.path.dirname(f):
-            f = os.path.join("data", f)
-        filename = os.path.join(self.testcase_path, f)
+        if not os.path.dirname(filename):
+            filename = os.path.join("data", filename)
+        filename = os.path.join(self.testcase_path, filename)
         if not os.path.isfile(filename):
-            raise RuntimeError("File " + f + " should exist")
+            raise RuntimeError("File " + filename + " should exist")
         if os.stat(filename).st_size != 0:
-            raise RuntimeError("File " + f + " should be empty")
+            raise RuntimeError("File " + filename + " should be empty")
 
-    def empty_json_diff(self, f):
+    def empty_json_diff(self, filename):
         # if no directory provided...
-        if not os.path.dirname(f):
-            f = os.path.join("data", f)
-        filename1 = os.path.join(self.testcase_path, f)
-        filename2 = os.path.join(SUBMITTY_INSTALL_DIR,"test_suite/integrationTests/data/empty_json_diff_file.json")
-        return self.json_diff(filename1,filename2)
-
+        if not os.path.dirname(filename):
+            filename = os.path.join("data", filename)
+        filename1 = os.path.join(self.testcase_path, filename)
+        filename2 = os.path.join(SUBMITTY_INSTALL_DIR,
+                                 "test_suite/integrationTests/data/empty_json_diff_file.json")
+        return self.json_diff(filename1, filename2)
 
 
 def prebuild(func):
     mod = inspect.getmodule(inspect.stack()[1][0])
     path = os.path.dirname(mod.__file__)
     modname = mod.__name__
-    tw = TestcaseWrapper(path)
+    test_wrapper = TestcaseWrapper(path)
+
     def wrapper():
         print("* Starting prebuild for " + modname + "... ", end="")
-        func(tw)
+        func(test_wrapper)
         print("Done")
-    global to_run
-    to_run[modname].wrapper = tw
-    to_run[modname].prebuild = wrapper
+    # pylint: disable=global-variable-not-assigned
+    global TO_RUN
+    TO_RUN[modname].wrapper = test_wrapper
+    TO_RUN[modname].prebuild = wrapper
     return wrapper
 
 
@@ -324,20 +350,22 @@ def testcase(func):
     mod = inspect.getmodule(inspect.stack()[1][0])
     path = os.path.dirname(mod.__file__)
     modname = mod.__name__
-    tw = TestcaseWrapper(path)
+    test_wrapper = TestcaseWrapper(path)
+
     def wrapper():
         print("* Starting testcase " + modname + "." + func.__name__ + "... ", end="")
         try:
-            func(tw)
-            with bold + green:
+            func(test_wrapper)
+            with BOLD + GREEN:
                 print("PASSED")
-        except Exception as e:
-            with bold + red:
+        except Exception:
+            with BOLD + RED:
                 print("FAILED")
             # blank raise raises the last exception as is
             raise
 
-    global to_run
-    to_run[modname].wrapper = tw
-    to_run[modname].testcases.append(wrapper)
+    # pylint: disable=global-variable-not-assigned
+    global TO_RUN
+    TO_RUN[modname].wrapper = test_wrapper
+    TO_RUN[modname].testcases.append(wrapper)
     return wrapper

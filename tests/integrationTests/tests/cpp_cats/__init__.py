@@ -58,10 +58,10 @@ def allCorrect(test):
     test.run_run()
     test.run_validator()
 
-    test.diff("test03_output.txt","data/inst_output.txt")
-    test.diff("test04_output.txt","data/inst_output.txt")
-    test.diff("test05_output.txt","data/inst_output.txt")
-    test.diff("test06_output.txt","data/inst_output.txt")
+    test.diff("test03_output.txt", "data/inst_output.txt")
+    test.diff("test04_output.txt", "data/inst_output.txt")
+    test.diff("test05_output.txt", "data/inst_output.txt")
+    test.diff("test06_output.txt", "data/inst_output.txt")
 
     test.empty_file("test02_STDOUT.txt")
     test.empty_file("test02_STDERR.txt")
@@ -85,8 +85,8 @@ def allCorrect(test):
     test.empty_json_diff("test05_0_diff.json")
     test.empty_json_diff("test06_0_diff.json")
 
-    test.diff(".submit.grade",".submit.grade_allCorrect")
-    test.diff("submission.json","submission.json_allCorrect")
+    test.diff(".submit.grade", ".submit.grade_allCorrect")
+    test.diff("submission.json", "submission.json_allCorrect")
 
 
 @testcase
@@ -100,8 +100,8 @@ def columnSpacingOff(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_columnSpacingOff")
-    test.diff("submission.json","submission.json_columnSpacingOff")
+    test.diff(".submit.grade", ".submit.grade_columnSpacingOff")
+    test.diff("submission.json", "submission.json_columnSpacingOff")
 
 
 @testcase
@@ -115,8 +115,8 @@ def extraLinesAtEnd(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_extraLinesAtEnd")
-    test.diff("submission.json","submission.json_extraLinesAtEnd")
+    test.diff(".submit.grade", ".submit.grade_extraLinesAtEnd")
+    test.diff("submission.json", "submission.json_extraLinesAtEnd")
 
 
 @testcase
@@ -130,8 +130,8 @@ def extraSpacesAtEnd(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_extraSpacesAtEnd")
-    test.diff("submission.json","submission.json_extraSpacesAtEnd")
+    test.diff(".submit.grade", ".submit.grade_extraSpacesAtEnd")
+    test.diff("submission.json", "submission.json_extraSpacesAtEnd")
 
 
 @testcase
@@ -145,8 +145,8 @@ def frontSpacingOff(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_frontSpacingOff")
-    test.diff("submission.json","submission.json_frontSpacingOff")
+    test.diff(".submit.grade", ".submit.grade_frontSpacingOff")
+    test.diff("submission.json", "submission.json_frontSpacingOff")
 
 
 @testcase
@@ -160,8 +160,8 @@ def lineOrderOff(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_lineOrderOff")
-    test.diff("submission.json","submission.json_lineOrderOff")
+    test.diff(".submit.grade", ".submit.grade_lineOrderOff")
+    test.diff("submission.json", "submission.json_lineOrderOff")
 
 
 @testcase
@@ -175,8 +175,8 @@ def spacingOff(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_spacingOff")
-    test.diff("submission.json","submission.json_spacingOff")
+    test.diff(".submit.grade", ".submit.grade_spacingOff")
+    test.diff("submission.json", "submission.json_spacingOff")
 
 
 @testcase
@@ -190,5 +190,5 @@ def spellingOff(test):
     test.run_compile()
     test.run_run()
     test.run_validator()
-    test.diff(".submit.grade",".submit.grade_spellingOff")
-    test.diff("submission.json","submission.json_spellingOff")
+    test.diff(".submit.grade", ".submit.grade_spellingOff")
+    test.diff("submission.json", "submission.json_spellingOff")
