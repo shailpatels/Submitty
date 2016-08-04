@@ -57,6 +57,8 @@ DATABASE_USER=__CONFIGURE__FILLIN__DATABASE_USER__
 DATABASE_PASSWORD=__CONFIGURE__FILLIN__DATABASE_PASSWORD__
 
 TAGRADING_URL=__CONFIGURE__FILLIN__TAGRADING_URL__
+SUBMISSION_URL=__CONFIGURE__FILLIN__SUBMISSION_URL__
+CGI_URL=__CONFIGURE__FILLIN__CGI_URL__
 TAGRADING_LOG_PATH=__CONFIGURE__FILLIN__TAGRADING_LOG_PATH__
 
 
@@ -99,6 +101,8 @@ function replace_fillin_variables {
     sed -i -e "s|__INSTALL__FILLIN__DATABASE_PASSWORD__|$DATABASE_PASSWORD|g" $1
 
     sed -i -e "s|__INSTALL__FILLIN__TAGRADING_URL__|$TAGRADING_URL|g" $1
+    sed -i -e "s|__INSTALL__FILLIN__SUBMISSION_URL__|$SUBMISSION_URL|g" $1
+    sed -i -e "s|__INSTALL__FILLIN__CGI_URL__|$CGI_URL|g" $1
     sed -i -e "s|__INSTALL__FILLIN__TAGRADING_LOG_PATH__|$TAGRADING_LOG_PATH|g" $1
 
     sed -i -e "s|__INSTALL__FILLIN__AUTOGRADING_LOG_PATH__|$AUTOGRADING_LOG_PATH|g" $1
@@ -128,6 +132,7 @@ if [[ "$#" -ge 1 && $1 == "clean" ]] ; then
 
     rm -rf $SUBMITTY_INSTALL_DIR/website
     rm -rf $SUBMITTY_INSTALL_DIR/hwgrading_website
+    rm -rf $SUBMITTY_INSTALL_DIR/site
     rm -rf $SUBMITTY_INSTALL_DIR/src
     rm -rf $SUBMITTY_INSTALL_DIR/bin
     rm -rf $SUBMITTY_INSTALL_DIR/test_suite
@@ -253,6 +258,10 @@ mkdir -p $SUBMITTY_INSTALL_DIR/src/grading/lib
 pushd $SUBMITTY_INSTALL_DIR/src/grading/lib
 cmake ..
 make
+if [ $? -ne 0 ] ; then
+    echo "ERROR BUILDING AUTOGRADING LIBRARY"
+    exit 1
+fi
 popd
 
 
@@ -379,7 +388,6 @@ rsync  -rtz $SUBMITTY_REPOSITORY/TAGradingServer/toolbox      $SUBMITTY_INSTALL_
 rsync  -rtz $SUBMITTY_REPOSITORY/TAGradingServer/lib          $SUBMITTY_INSTALL_DIR/hwgrading_website
 rsync  -rtz $SUBMITTY_REPOSITORY/TAGradingServer/account      $SUBMITTY_INSTALL_DIR/hwgrading_website
 rsync  -rtz $SUBMITTY_REPOSITORY/TAGradingServer/app          $SUBMITTY_INSTALL_DIR/hwgrading_website
-rsync  -rtz $SUBMITTY_REPOSITORY/TAGradingServer/cgi-bin      $SUBMITTY_INSTALL_DIR/hwgrading_website
 
 # set special user $HWPHP_USER as owner & group of all hwgrading_website files
 find $SUBMITTY_INSTALL_DIR/hwgrading_website -exec chown $HWPHP_USER:$HWPHP_USER {} \;
@@ -401,12 +409,39 @@ find $SUBMITTY_INSTALL_DIR/hwgrading_website -type f -name \*.gif -exec chmod o+
 # "other" can read & execute all .js files
 find $SUBMITTY_INSTALL_DIR/hwgrading_website -type f -name \*.js -exec chmod o+rx {} \;
 
-# set the execute bit for any .cgi scripts
-find $SUBMITTY_INSTALL_DIR/hwgrading_website -type f -name \*.cgi -exec chmod u+x {} \;
+#replace_fillin_variables $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master_template.php
+#mv $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master_template.php $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master.php
 
-replace_fillin_variables $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master_template.php
-mv $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master_template.php $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/master.php
 
+################################################################################################################
+################################################################################################################
+# COPY THE 1.0 Grading Website
+
+echo -e "Copy the 1.0 grading website"
+
+# copy the website from the repo
+rsync -rtz   $SUBMITTY_REPOSITORY/site   $SUBMITTY_INSTALL_DIR
+
+# set special user $HWPHP_USER as owner & group of all website files
+find $SUBMITTY_INSTALL_DIR/site -exec chown $HWPHP_USER:$HWPHP_USER {} \;
+
+# set the permissions of all files
+# $HWPHP_USER can read & execute all directories and read all files
+# "other" can cd into all subdirectories
+chmod -R 400 $SUBMITTY_INSTALL_DIR/site
+find $SUBMITTY_INSTALL_DIR/site -type d -exec chmod uo+x {} \;
+# "other" can read all .txt, .jpg, & .css files
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.css -exec chmod o+r {} \;
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.otf -exec chmod o+r {} \;
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.jpg -exec chmod o+r {} \;
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.png -exec chmod o+r {} \;
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.txt -exec chmod o+r {} \;
+# "other" can read & execute all .js files
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.js -exec chmod o+rx {} \;
+find $SUBMITTY_INSTALL_DIR/site -type f -name \*.cgi -exec chmod u+x {} \;
+
+replace_fillin_variables $SUBMITTY_INSTALL_DIR/site/config/master_template.ini
+mv $SUBMITTY_INSTALL_DIR/site/config/master_template.ini $SUBMITTY_INSTALL_DIR/site/config/master.ini
 
 ################################################################################################################
 ################################################################################################################
@@ -454,6 +489,17 @@ echo -e "\n\n"                                                                  
 crontab  -u hwcron  ${HWCRON_CRONTAB_FILE}
 rm ${HWCRON_CRONTAB_FILE}
 
+
+################################################################################################################
+################################################################################################################
+# COMPILE AND INSTALL ANALYSIS TOOLS
+
+echo -e "Compile and install analysis tools"
+pushd ${SUBMITTY_INSTALL_DIR}/GIT_CHECKOUT_AnalysisTools
+git pull origin master
+make ubuntudeps
+make
+popd
 
 ################################################################################################################
 ################################################################################################################

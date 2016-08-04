@@ -17,6 +17,7 @@ date_default_timezone_set('America/New_York');
 use \lib\AutoLoader;
 use \lib\Database;
 use \lib\ExceptionHandler;
+use \lib\IniParser;
 use \lib\Logger;
 use \app\models\User;
 
@@ -33,8 +34,9 @@ $start_time = microtime_float();
 
 if (isset($_GET['course'])) {
     // don't allow the user entered course to potentially point to a different directory via use of ../
-    $_GET['course'] = str_replace("/", "_", $_GET['course']);
-    $config = __DIR__."/configs/".$_GET['course'].".php";
+    $_GET['course'] = isset($_GET['course']) ? str_replace("/", "_", $_GET['course']) : "";
+    $_GET['semester'] = isset($_GET['semester']) ? str_replace("/", "_", $_GET['semester']) : "";
+    $config = __DIR__."/../../site/config/".$_GET['semester']."/".$_GET['course'].".ini";
     if (!file_exists($config)) {
         die(\lib\ErrorPage::get_error_page("Fatal Error: The config for the specified course '{$_GET['course']}' does not exist"));
     }
@@ -43,8 +45,35 @@ else {
     die(\lib\ErrorPage::get_error_page("Fatal Error: You must have course=#### in the URL bar"));
 }
 
-require_once("configs/master.php");
-require_once($config);
+$a = IniParser::readFile(__DIR__."/../../site/config/master.ini");
+define("__BASE_URL__", $a['site_details']['ta_base_url']);
+define("__CGI_URL__", $a['site_details']['cgi_url']);
+define("__SUBMISSION_GRACE_PERIOD_SECONDS__", "30 * 60");
+define("__OUTPUT_MAX_LENGTH__", 100000);
+define("__DATABASE_HOST__", $a['database_details']['database_host']);
+define("__DATABASE_USER__", $a['database_details']['database_user']);
+define("__DATABASE_PASSWORD__", $a['database_details']['database_password']);
+
+define("__SUBMISSION_SERVER__", $a['site_details']['submitty_path']."/courses/".$_GET['semester']."/".$_GET['course']);
+
+define("__DEBUG__", $a['site_details']['debug']);
+
+define("__LOG_PATH__", $a['logging_details']['submitty_log_path']);
+define("__LOG_EXCEPTIONS__", $a['logging_details']['log_exceptions']);
+
+define('__TMP_XLSX_PATH__', '/tmp/_SUBMITTY_xlsx');
+define('__TMP_CSV_PATH__',  '/tmp/_SUBMITTY_csv');
+
+$a = IniParser::readFile($config);
+define("__COURSE_CODE__", $_GET['course']);
+define("__COURSE_SEMESTER__", $_GET['semester']);
+define("__DATABASE_NAME__", $a['database_details']['database_name']);
+define("__COURSE_NAME__", $a['course_details']['course_name']);
+define("__CALCULATE_DIFF__", true);
+define("__DEFAULT_LATE_DAYS__", $a['course_details']['default_hw_late_days']);
+define("__DEFAULT_LATE_DAYS_STUDENT__", $a['course_details']['default_student_late_days']);
+define("__USE_AUTOGRADER__", true);
+define("__ZERO_RUBRIC_GRADES__", $a['course_details']['zero_rubric_grades']);
 
 $DEBUG = (defined('__DEBUG__')) ? (__DEBUG__): false;
 ExceptionHandler::$debug = $DEBUG;
@@ -57,13 +86,11 @@ if($DEBUG) {
 }
 else {
     ini_set('display_errors', 1);
-    error_reporting(E_ERROR);
+    error_reporting(E_ALL);
 }
 
 $db = Database::getInstance();
 $db->connect(__DATABASE_HOST__, __DATABASE_USER__, __DATABASE_PASSWORD__, __DATABASE_NAME__);
-
-load_config();
 
 $COURSE_NAME = __COURSE_NAME__;
 $BASE_URL = rtrim(__BASE_URL__, "/");
@@ -71,13 +98,7 @@ $BASE_URL = rtrim(__BASE_URL__, "/");
 header("Content-Type: text/html; charset=UTF-8");
 
 $user_id = 0;
-if ($DEBUG) {
-    // TODO: we need to have a pseudo http login box just to always set $_SERVER["PHP_AUTH_USER"] to not default to me
-    $suggested_username = (isset($_GET['useUser'])) ? $_GET['useUser'] : "pevelm";
-}
-else {
-    $suggested_username = $_SERVER["PHP_AUTH_USER"];
-}
+$suggested_username = ($DEBUG && isset($_GET['useUser'])) ? $_GET['useUser'] : $_SERVER["PHP_AUTH_USER"];
 $params = array($suggested_username);
 try {
     User::loadUser($suggested_username);
@@ -201,6 +222,49 @@ function digit_to_ordinal($number) {
 // UTILITIES
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+function getContentType($filename){
+    switch (strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
+        // pdf
+        case 'pdf':
+            $content_type = "application/pdf";
+            break;
+        // images
+        case 'png':
+            $content_type = "image/png";
+            break;
+        case 'jpg':
+        case 'jpeg':
+            $content_type = "image/jpeg";
+            break;
+        case 'gif':
+            $content_type = "image/gif";
+            break;
+        case 'bmp':
+            $content_type = "image/bmp";
+            break;
+        // text
+        case 'c':
+            $content_type = 'text/x-csrc';
+            break;
+        case 'cpp':
+        case 'cxx':
+        case 'h':
+        case 'hpp':
+        case 'hxx':
+            $content_type = 'text/x-c++src';
+            break;
+        case 'java':
+            $content_type = 'text/x-java';
+            break;
+        case 'py':
+            $content_type = 'text/x-python';
+            break;
+        default:
+            $content_type = 'text/x-sh';
+            break;
+    }
+    return $content_type;
+}
 
 /**
  * @param $filename
@@ -209,28 +273,7 @@ function digit_to_ordinal($number) {
  * @return string
  */
 function sourceSettingsJS($filename, $number) {
-    switch(strtolower(pathinfo($filename, PATHINFO_EXTENSION))) {
-        case 'c':
-            $type = 'text/x-csrc';
-            break;
-        case 'cpp':
-        case 'cxx':
-        case 'h':
-        case 'hpp':
-        case 'hxx':
-            $type = 'text/x-c++src';
-            break;
-        case 'java':
-            $type = 'text/x-java';
-            break;
-        case 'py':
-            $type = 'text/x-python';
-            break;
-        default:
-            $type = 'text/x-sh';
-            break;
-    }
-
+    $type = getContentType($filename);
     $number = intval($number);
     return <<<HTML
 <script>
@@ -242,10 +285,16 @@ function sourceSettingsJS($filename, $number) {
     });
 
     var lineCount = editor{$number}.lineCount();
-    if (lineCount == 0) {
-        //lineCount += 1;
+    if (lineCount == 1) {
+        editor{$number}.setSize("100%", (editor{$number}.defaultTextHeight() * 2) + "px");
     }
-    editor{$number}.setSize("100%", (editor{$number}.defaultTextHeight() * (lineCount+1)) + "px");
+    else {
+        editor{$number}.setSize("100%", "auto");
+    }
+    // editor{$number}.setSize("100%", (editor{$number}.defaultTextHeight() * (lineCount+1)) + "px");
+    // editor{$number}.setSize("100%", "100%" + "px");
+    // editor{$number}.setSize("100%", "auto");
+    // editor{$number}.setOption("viewportMargin", "infinity");
     editor{$number}.setOption("theme", "eclipse");
     editor{$number}.setOption("mode", "{$type}");
 

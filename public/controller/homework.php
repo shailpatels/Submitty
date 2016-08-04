@@ -30,17 +30,20 @@ $view_points =                      is_points_visible($class_config, $assignment
 $view_hidden_points =               is_hidden_points_visible($class_config, $assignment_id);
 $highest_version =                  get_highest_assignment_version($username, $semester,$course, $assignment_id);
 
-//Assignment configuration data from assignment_config.json
+//Assignment configuration data from config/build/build_XXX.json
 $assignment_config =                get_assignment_config($semester,$course, $assignment_id);
 $num_parts =                        get_num_parts($assignment_config);
 $part_names =                       get_part_names($assignment_config);
 $max_submissions_for_assignment =   $assignment_config["max_submissions"];
-$assignment_message =               $assignment_config["assignment_message"];
+$assignment_message = "";
+if (isset($assignment_config["assignment_message"])) {
+  $assignment_message = $assignment_config["assignment_message"];
+}
 
 $points_received = 0;
 $points_possible = 0;
 
-//Gets testcase configuration data from assignment_config.json and matches it with results data for each testcase
+//Gets testcase configuration data from config/build/build_XXX.json and matches it with results data for each testcase
 $homework_tests =            get_homework_tests($username, $semester,$course, $assignment_id, $assignment_version, $assignment_config);
 
 //Active version / version to submit
@@ -68,12 +71,6 @@ $assignment_version_in_grading_queue2 = version_in_grading_queue2($username, $se
 //$points_visible =            $assignment_config["points_visible"];
 // FIXME:  This looks correct.  Why are they different?  Why are there two?
 $points_visible =            get_points_visible($submitting_homework_tests);
-
-
-//List of submitted files that server is allowed to display
-$files_to_view =            get_files_to_view($class_config,$semester,$course,$assignment_id, $username,$assignment_version);
-
-
 
 //List of submitted files that server is allowed to display
 $files_to_view =            get_files_to_view($class_config,$semester,$course,$assignment_id, $username,$assignment_version);

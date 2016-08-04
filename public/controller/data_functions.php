@@ -104,6 +104,8 @@ function display_file_permissions($perms) {
 function upload_homework($username, $semester, $course, $assignment_id, $num_parts, $homework_file, $previous_files, $svn_checkout) {
     // parts in homework_file: 1 to num_parts
     // check if upload succeeded for all parts
+    $count = array();
+    
     if ($svn_checkout == false) {
       if(isset($homework_file)) {
         for($n=1; $n <= $num_parts; $n++) {
@@ -231,7 +233,7 @@ function upload_homework($username, $semester, $course, $assignment_id, $num_par
             $filename = explode(".", $homework_file[$n]["name"][$i]);
             $extension = end($filename);
             if($extension == "zip") {
-              $file_size += get_zip_size($filename);
+              $file_size += get_zip_size($homework_file[$n]["tmp_name"][$i]);
             }
             else {
               $file_size += $homework_file[$n]["size"][$i];
@@ -337,12 +339,6 @@ function upload_homework($username, $semester, $course, $assignment_id, $num_par
             if ($res === TRUE) {
               $zip->extractTo($part_path[$n]);
               $zip->close();
-
-              $unlink_return = unlink ($homework_file[$n]["tmp_name"][$i]);
-              if (!$unlink_return) {
-                display_error("Failed to unlink(delete) uploaded zip file ".$homework_file[$n]["name"][$i]." from temporary storage.");
-                return;
-              }
             }
             else{   // copy single file to folder
               // --------------------------------------------------------------
@@ -367,12 +363,12 @@ function upload_homework($username, $semester, $course, $assignment_id, $num_par
                   display_error("Failed to copy uploaded file ".$homework_file[$n]["name"][$i]." to current submission.");
                   return;
                 }
-                $unlink_return = unlink ($homework_file[$n]["tmp_name"][$i]);
-                if (!$unlink_return) {
-                  display_error("Failed to unlink(delete) uploaded file ".$homework_file[$n]["name"][$i]." from temporary storage.");
-                  return;
-                }
               }
+            }
+            $unlink_return = unlink ($homework_file[$n]["tmp_name"][$i]);
+            if (!$unlink_return) {
+               display_error("Failed to unlink(delete) uploaded zip file ".$homework_file[$n]["name"][$i]." from temporary storage.");
+               return;
             }
           }
         }
@@ -568,7 +564,7 @@ function get_contents($dir, $max_depth) {
     if (is_dir($dir)) {
         if ($handle = opendir($dir)) {
             while (($file = readdir($handle)) !== false) {
-                if ($file[0] && $file[0] != ".") {
+                if (isset($file[0]) && $file[0] != ".") {
                     if (is_dir($dir."/".$file)) {
                         $children = get_contents($dir."/".$file, $max_depth - 1);
                         foreach ($children as $child) {
@@ -980,7 +976,7 @@ function get_homework_tests($username, $semester,$course, $assignment_id, $assig
                 $data["points_possible"] = isset($testcases_info[$i]["points"]) ? $testcases_info[$i]["points"] : 0;
                 $data["score"] = isset($testcases_results[$u]["points_awarded"]) ? $testcases_results[$u]["points_awarded"] : 0;
                 $data["is_hidden"] = isset($testcases_info[$i]["hidden"]) ? $testcases_info[$i]["hidden"] : false;
-                $data["is_extra_credit"] = isset($testcases_info[$i]["extracredit"]) ? $testcases_info[$i]["extracredit"] : false;
+                $data["is_extra_credit"] = isset($testcases_info[$i]["extra_credit"]) ? $testcases_info[$i]["extra_credit"] : false;
                 $data["visible"] = isset($testcases_info[$i]["visible"]) ? $testcases_info[$i]["visible"] : true;
                 $data["view_test_points"] = isset($testcases_info[$i]["view_test_points"]) ? $testcases_info[$i]["view_test_points"] : true;
                 $data["message"] = isset($testcases_results[$u]["message"]) ? $testcases_results[$u]["message"] : "";
@@ -991,13 +987,26 @@ function get_homework_tests($username, $semester,$course, $assignment_id, $assig
                 if (isset($testcases_results[$u]["compilation_output"])) {
                     $data["compilation_output"] = get_compilation_output($student_path . $testcases_results[$u]["compilation_output"]);
                 }
-                if ($include_diffs && isset($testcases_results[$u]["diffs"])) {
-                    $data["diffs"] = get_all_testcase_diffs($username, $semester,$course, $assignment_id, $assignment_version, $testcases_results[$u]["diffs"]);
+                if ($include_diffs && isset($testcases_results[$u]["autochecks"])) {
+                    $data["autochecks"] = get_all_testcase_diffs($username, $semester,$course, $assignment_id, $assignment_version, $testcases_results[$u]["autochecks"]);
                 }
 
                 array_push($homework_tests, $data);
                 break;
             }
+        }
+        // still get testcases when assignment version is 0 and give a score of 0 on every testcase
+        if($assignment_version == 0 && isset($testcases_info[$i]["title"])) {
+            $data = array();
+            $data["title"] = isset($testcases_info[$i]["title"]) ? $testcases_info[$i]["title"] : "";
+            $data["details"] = isset($testcases_info[$i]["details"]) ? $testcases_info[$i]["details"] : "";
+            $data["points_possible"] = isset($testcases_info[$i]["points"]) ? $testcases_info[$i]["points"] : 0;
+            $data["score"] = 0;
+            $data["is_hidden"] = isset($testcases_info[$i]["hidden"]) ? $testcases_info[$i]["hidden"] : false;
+            $data["is_extra_credit"] = isset($testcases_info[$i]["extra_credit"]) ? $testcases_info[$i]["extra_credit"] : false;
+            $data["visible"] = isset($testcases_info[$i]["visible"]) ? $testcases_info[$i]["visible"] : true;
+            $data["view_test_points"] = isset($testcases_info[$i]["view_test_points"]) ? $testcases_info[$i]["view_test_points"] : true;
+            array_push($homework_tests, $data);
         }
     }
     return $homework_tests;
@@ -1071,7 +1080,7 @@ function get_select_submission_data($username, $semester,$course, $assignment_id
 // Get the test cases from the instructor configuration file
 function get_assignment_config($semester,$course, $assignment_id) {
     $path_front = get_path_front_course($semester,$course);
-    $file = $path_front."/config/".$assignment_id."_assignment_config.json";
+    $file = $path_front."/config/build/build_".$assignment_id.".json";
     if (!file_exists($file)) {
         return false;//TODO Handle this case
     }
@@ -1237,7 +1246,8 @@ function get_testcase_diff($username, $semester,$course, $assignment_id, $assign
             $data["instructor"] = file_get_contents($instructor_file_path);
         }
     }
-    if (isset($diff["student_file"]) && file_exists($student_path . $diff["student_file"])) {
+    if (isset($diff["student_file"]) &&
+        file_exists($student_path . $diff["student_file"])) {
         $file_size = filesize($student_path. $diff["student_file"]);
         if ($file_size / 1024 < 10000) {
             $data["student"] = file_get_contents($student_path.$diff["student_file"]);
@@ -1255,13 +1265,13 @@ function get_all_testcase_diffs($username, $semester,$course, $assignment_id, $a
     $results = array();
     foreach ($diffs as $diff) {
         $diff_result = get_testcase_diff($username, $semester,$course, $assignment_id, $assignment_version, $diff);
-        $diff_result["diff_id"] = $diff["diff_id"];
+        $diff_result["autocheck_id"] = $diff["autocheck_id"];
 
         if (isset($diff["display_mode"]) && $diff["display_mode"] != "") {
              $diff_result["display_mode"] = $diff["display_mode"];
         }
-        if (isset($diff["message"]) && $diff["message"] != "") {
-            $diff_result["message"] = $diff["message"];
+        if (isset($diff["messages"])) {
+            $diff_result["messages"] = $diff["messages"];
         }
         if (isset($diff["description"]) && $diff["description"] != "") {
             $diff_result["description"] = $diff["description"];

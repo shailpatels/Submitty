@@ -37,8 +37,9 @@ if [ ${VAGRANT} == 1 ]; then
 ############################################################
 ##  All user accounts have same password unless otherwise ##
 ##  noted below. The following user accounts exist:       ##
-##    vagrant/vagrant, root/vagrant, hsdbu, hwphp         ##
-##    hwcron, ta, instructor, developer, postgres         ##
+##    vagrant/vagrant, root/vagrant, hsdbu, hwphp,        ##
+##    hwphp-cgi hwcron, ta, instructor, developer,        ##
+##    postgres                                            ##
 ##                                                        ##
 ##  The following accounts have database accounts         ##
 ##  with same password as above:                          ##
@@ -48,8 +49,11 @@ if [ ${VAGRANT} == 1 ]; then
 ##    https://192.168.56.101 (submission)                 ##
 ##    https://192.168.56.102 (svn)                        ##
 ##    https://192.168.56.103 (grading)                    ##
+##    https://192.168.56.104 (new-submission)             ##
+##    https://192.168.56.105 (cgi-bin scripts)            ##
 ##                                                        ##
-##  The database can be accessed via localhost:15432      ##
+##  The database can be accessed on the host machine at   ##
+##   localhost:15432                                      ##
 ##                                                        ##
 ##  Happy developing!                                     ##
 ############################################################
@@ -70,7 +74,6 @@ echo "\n" | add-apt-repository ppa:webupd8team/java
 apt-get -qq update
 
 
-
 ############################
 # NTP: Network Time Protocol
 # You want to be sure the clock stays in sync, especially if you have
@@ -87,8 +90,6 @@ apt-get -qq update
 apt-get install -qqy ntp
 service ntp restart
 
-
-
 # path for untrusted user creation script will be different if not using Vagrant
 ${SUBMITTY_REPOSITORY}/.setup/create.untrusted.users.pl
 
@@ -103,7 +104,7 @@ apt-get install -qqy libpam-passwdqc
 # the worker/threaded mode instead)
 
 apt-get install -qqy ssh sshpass unzip
-apt-get install -qqy apache2 postgresql postgresql-contrib php5 php5-xdebug libapache2-mod-suphp
+apt-get install -qqy apache2 postgresql postgresql-contrib php5 php5-xdebug libapache2-mod-suphp php5-curl
 
 # Check to make sure you got the right setup by typing:
 #   apache2ctl -V | grep MPM
@@ -119,11 +120,14 @@ apachectl -V | grep MPM
 
 echo "Preparing to install packages.  This may take a while."
 apt-get install -qqy clang autoconf automake autotools-dev clisp diffstat emacs finger gdb git git-man \
-hardening-includes python p7zip-full patchutils postgresql-client postgresql-client-9.3 postgresql-client-common \
+hardening-includes python python-pip p7zip-full patchutils postgresql-client postgresql-client-9.3 postgresql-client-common \
 unzip valgrind zip libmagic-ocaml-dev common-lisp-controller libboost-all-dev javascript-common \
 apache2-suexec-custom libapache2-mod-authnz-external libapache2-mod-authz-unixgroup libfile-mmagic-perl \
 libgnupg-interface-perl php5-pgsql php5-mcrypt libbsd-resource-perl libarchive-zip-perl gcc g++ g++-multilib jq libseccomp-dev \
 libseccomp2 seccomp junit cmake xlsx2csv libpcre3 libpcre3-dev flex bison
+
+apt-get install -qqy subversion subversion-tools
+apt-get install -qqy libapache2-svn
 
 # Enable PHP5-mcrypt
 php5enmod mcrypt
@@ -141,7 +145,16 @@ apt-get install -qqy racket > /dev/null 2>&1
 apt-get install -qqy swi-prolog > /dev/null 2>&1
 
 # Install Image Magick for image comparison, etc.
-apt-get install imagemagick
+apt-get install -qqy imagemagick
+
+apt-get -qqy autoremove
+
+
+# TODO: We should look into making it so that only certain users have access to certain packages
+# so that hwphp is the only one who could use PAM for example
+pip install python-pam
+chmod 555 /usr/local/lib/python2.7/*
+chmod 555 /usr/lib/python2.7/dist-packages
 
 #################################################################
 # NETWORK CONFIGURATION
@@ -181,13 +194,15 @@ echo "Binding static IPs to \"Host-Only\" virtual network interface."
 # not auto-configured.  eth1 is manually set so that the host-only network
 # interface remains consistent among VM reboots as Vagrant has a bad habit of
 # discarding and recreating networking interfaces everytime the VM is restarted.
-# eth1 is statically bound to 192.168.56.101, 102, and 103.
+# eth1 is statically bound to 192.168.56.101, 102, 103, 104, and 105.
 printf "auto eth1\niface eth1 inet static\naddress 192.168.56.101\nnetmask 255.255.255.0\n\n" >> /etc/network/interfaces.d/eth1.cfg
 printf "auto eth1:1\niface eth1:1 inet static\naddress 192.168.56.102\nnetmask 255.255.255.0\n\n" >> /etc/network/interfaces.d/eth1.cfg
-printf "auto eth1:2\niface eth1:2 inet static\naddress 192.168.56.103\nnetmask 255.255.255.0\n" >> /etc/network/interfaces.d/eth1.cfg
+printf "auto eth1:2\niface eth1:2 inet static\naddress 192.168.56.103\nnetmask 255.255.255.0\n\n" >> /etc/network/interfaces.d/eth1.cfg
+printf "auto eth1:3\niface eth1:3 inet static\naddress 192.168.56.104\nnetmask 255.255.255.0\n\n" >> /etc/network/interfaces.d/eth1.cfg
+printf "auto eth1:4\niface eth1:4 inet static\naddress 192.168.56.105\nnetmask 255.255.255.0\n" >> /etc/network/interfaces.d/eth1.cfg
 
 # Turn them on.
-ifup eth1 eth1:1 eth1:2
+ifup eth1 eth1:1 eth1:2 eth1:3 eth1:4
 
 #################################################################
 # JAR SETUP
@@ -369,9 +384,16 @@ grep -q "^UMASK 027" /etc/login.defs || (echo "ERROR! failed to set umask" && ex
 
 
 adduser hwphp --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
+adduser hwphp-cgi --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
+# TODO: REMOVE THIS REMOVE THIS REMOVE THIS REMOVE THIS
+adduser hwphp shadow
+adduser hwphp-cgi hwphp
+adduser hwphp-cgi shadow
 if [ ${VAGRANT} == 1 ]; then
 	echo "hwphp:hwphp" | sudo chpasswd
+	echo "hwphp-cgi:hwphp-cgi" | sudo chpasswd
 	adduser hwphp vagrant
+	adduser hwphp-cgi vagrant
 fi
 adduser hwcron --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
 if [ ${VAGRANT} == 1 ]; then
@@ -383,6 +405,7 @@ fi
 # might need to also set USERGROUPS_ENAB to "no", and manually create
 # the hwphp and hwcron single user groups.  See also /etc/login.defs
 echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwphp/.profile
+echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwphp-cgi/.profile
 echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwcron/.profile
 
 
@@ -393,16 +416,16 @@ fi
 adduser hwphp hwcronphp
 adduser hwcron hwcronphp
 
-for COURSE in csci1100 csci1200 csci2600
+for COURSE in csci1000 csci1100 csci1200 csci2600
 do
 
-        # for each course, create a group to contain the current
-        # instructor along the lines of:
+    # for each course, create a group to contain the current
+    # instructor along the lines of:
 
 	addgroup $COURSE
 
-        # and another group to contain the current instructor, TAs,
-        # hwcron, and hwphp along the lines of
+    # and another group to contain the current instructor, TAs,
+    # hwcron, and hwphp along the lines of
 
 	addgroup $COURSE\_tas_www
 	adduser hwphp $COURSE\_tas_www
@@ -436,8 +459,6 @@ ls /home | sort > ${SUBMITTY_DATA_DIR}/instructors/valid
 #################################################################
 # SVN SETUP
 #################
-apt-get install -qqy subversion subversion-tools
-apt-get install -qqy libapache2-svn
 a2enmod dav
 a2enmod dav_fs
 a2enmod authz_svn
@@ -474,16 +495,21 @@ if [ ${VAGRANT} == 1 ]; then
 	echo "postgres:postgres" | chpasswd postgres
 	adduser postgres shadow
 	service postgresql restart
-	sed -i -e "s/# ----------------------------------/# ----------------------------------\nhostssl    all    all    192.168.56.0\/24    pam\nhost    all    all    192.168.56.0\/24    pam/" /etc/postgresql/9.3/main/pg_hba.conf
+	PG_VERSION="$(psql -V | egrep -o '[0-9]{1,}\.[0-9]{1,}')"
+	sed -i -e "s/# ----------------------------------/# ----------------------------------\nhostssl    all    all    192.168.56.0\/24    pam\nhost       all    all    192.168.56.0\/24    pam\nhost       all    all    all                md5/" /etc/postgresql/${PG_VERSION}/main/pg_hba.conf
 	echo "Creating PostgreSQL users"
 	su postgres -c "source ${SUBMITTY_REPOSITORY}/.setup/vagrant/db_users.sh";
 	echo "Finished creating PostgreSQL users"
 
-    echo "Setting up Postgres to connect to via host"
-    PG_VERSION="$(psql -V | egrep -o '[0-9]{1,}\.[0-9]{1,}')"
 	sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" "/etc/postgresql/${PG_VERSION}/main/postgresql.conf"
-	echo "host    all             all             all                     md5" >> "/etc/postgresql/${PG_VERSION}/main/pg_hba.conf"
 	service postgresql restart
+fi
+
+#################################################################
+# ANALYSIS TOOLS SETUP
+#################
+if [ ${VAGRANT} == 1 ]; then
+    git clone 'https://github.com/Submitty/AnalysisTools' ${SUBMITTY_INSTALL_DIR}/GIT_CHECKOUT_AnalysisTools
 fi
 
 #################################################################
@@ -494,7 +520,9 @@ if [ ${VAGRANT} == 1 ]; then
 	echo -e "localhost
 hsdbu
 hsdbu
+http://192.168.56.104
 https://192.168.56.103
+http://192.168.56.105
 svn+ssh:192.168.56.102" | source ${SUBMITTY_REPOSITORY}/.setup/CONFIGURE_SUBMITTY.sh
 else
 	source ${SUBMITTY_REPOSITORY}/.setup/CONFIGURE_SUBMITTY.sh
@@ -506,7 +534,9 @@ source ${SUBMITTY_INSTALL_DIR}/.setup/INSTALL_SUBMITTY.sh clean
 source ${SUBMITTY_REPOSITORY}/Docs/sample_bin/admin_scripts_setup
 cp ${SUBMITTY_REPOSITORY}/Docs/sample_apache_config /etc/apache2/sites-available/submit.conf
 cp ${SUBMITTY_REPOSITORY}/Docs/hwgrading.conf /etc/apache2/sites-available/hwgrading.conf
-cp -f ${SUBMITTY_REPOSITORY}/Docs/www-data /etc/apache2/suexec/www-data
+cp ${SUBMITTY_REPOSITORY}/.setup/vagrant/submitty.conf /etc/apache2/sites-available/submitty.conf
+cp ${SUBMITTY_REPOSITORY}/.setup/vagrant/cgi.conf /etc/apache2/sites-available/cgi.conf
+cp -f ${SUBMITTY_REPOSITORY}/.setup/vagrant/www-data /etc/apache2/suexec/www-data
 
 # permissions: rw- r-- ---
 chmod 0640 /etc/apache2/sites-available/*.conf
@@ -523,6 +553,8 @@ fi
 
 a2ensite submit
 a2ensite hwgrading
+a2ensite submitty
+a2ensite cgi
 
 apache2ctl -t
 service apache2 restart
@@ -547,8 +579,6 @@ if [[ ${VAGRANT} == 1 ]]; then
     chmod u+x ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.sh
     ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.sh
 
-
-
     #################################################################
     # SET CSV FIELDS (for classlist upload data)
     #################
@@ -567,7 +597,6 @@ chown hwphp:hwphp ${SUBMITTY_INSTALL_DIR}
 # With this line, subdirectories inherit the group by default and
 # blocks r/w access to the directory by others on the system.
 chmod 2771 ${SUBMITTY_INSTALL_DIR}
-
 
 echo "Done."
 exit 0

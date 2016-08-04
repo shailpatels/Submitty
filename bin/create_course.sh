@@ -146,6 +146,12 @@ if [ ! -d "$SUBMITTY_DATA_DIR/courses/$semester" ]; then
     chmod 751                           $SUBMITTY_DATA_DIR/courses/$semester
 fi
 
+if [ ! -d "$SUBMITTY_INSTALL_DIR/site/config/$semester" ]; then
+    mkdir               $SUBMITTY_INSTALL_DIR/site/config/$semester
+    chown hwphp:hwphp   $SUBMITTY_INSTALL_DIR/site/config/$semester
+    chmod 400           $SUBMITTY_INSTALL_DIR/site/config/$semester
+fi
+
 ########################################################################################################################
 ########################################################################################################################
 
@@ -169,6 +175,8 @@ create_and_set  u=rwx,g=rwxs,o=   $instructor  $ta_www_group   $course_dir
 #               drwxrws---       instructor   ta_www_group    config/
 create_and_set  u=rwx,g=rwxs,o=  $instructor  $ta_www_group   $course_dir/build
 create_and_set  u=rwx,g=rwxs,o=  $instructor  $ta_www_group   $course_dir/config
+create_and_set  u=rwx,g=rwxs,o=  $instructor  $ta_www_group   $course_dir/config/build
+create_and_set  u=rwx,g=rwxs,o=  $instructor  $ta_www_group   $course_dir/config/form
 
 
 # NOTE: when homework is    installed, grading executables, code, & datafiles are placed here
@@ -220,10 +228,11 @@ chmod 660 $course_dir/config/class.json
 
 
 # copy the config file for TA grading & replace the variables
-cp $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/sample_course.php $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/${course}.php
-chown hwphp:hwphp $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/${course}.php
-chmod 400 $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/${course}.php
-replace_fillin_variables $SUBMITTY_INSTALL_DIR/hwgrading_website/toolbox/configs/${course}.php
+mkdir -p $SUBMITTY_INSTALL_DIR/site/config
+cp $SUBMITTY_INSTALL_DIR/site/config/course_template.ini $SUBMITTY_INSTALL_DIR/site/config/${semester}/${course}.ini
+chown hwphp:hwphp $SUBMITTY_INSTALL_DIR/site/config/${semester}/${course}.ini
+chmod 400 $SUBMITTY_INSTALL_DIR/site/config/${semester}/${course}.ini
+replace_fillin_variables $SUBMITTY_INSTALL_DIR/site/config/${semester}/${course}.ini
 
 echo -e "\nMake sure to create the database: $DATABASE_NAME\n\n"
 

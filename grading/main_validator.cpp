@@ -20,6 +20,7 @@
 #include "TestCase.h"
 #include "default_config.h"
 
+#include "json.hpp"
 
 extern std::string GLOBAL_replace_string_before;
 extern std::string GLOBAL_replace_string_after;
@@ -29,7 +30,6 @@ extern std::string GLOBAL_replace_string_after;
 // =====================================================================
 
 int validateTestCases(const std::string &hw_id, const std::string &rcsid, int subnum, const std::string &subtime);
-std::string join(std::vector<std::string> strings);
 
 int main(int argc, char *argv[]) {
 
@@ -70,6 +70,11 @@ int main(int argc, char *argv[]) {
 /* Runs through each test case, pulls in the correct files, validates, and outputs the results */
 int validateTestCases(const std::string &hw_id, const std::string &rcsid, int subnum, const std::string &subtime) {
 
+  nlohmann::json config_json;
+  std::stringstream sstr(GLOBAL_config_json_string);
+  sstr >> config_json;
+
+
   std::string grade_path = ".submit.grade";
   std::ofstream gradefile(grade_path.c_str());
 
@@ -90,11 +95,9 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
   int nonhidden_possible_pts = 0;
   int hidden_possible_pts = 0;
 
-  int possible_ta_pts = TA_POINTS;
-
   std::stringstream testcase_json;
-  std::vector<std::string> all_testcases;
 
+  nlohmann::json all_testcases;
 
 #ifdef __CUSTOMIZE_AUTO_GRADING_REPLACE_STRING__
   GLOBAL_replace_string_before = __CUSTOMIZE_AUTO_GRADING_REPLACE_STRING__;
@@ -107,158 +110,132 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
   system("find . -type f");
 
   // LOOP OVER ALL TEST CASES
-  for (int i = 0; i < testcases.size(); ++i) {
-    std::cout << "------------------------------------------\n" << testcases[i].title() << " - points: " << testcases[i].points() << std::endl;
+  nlohmann::json::iterator tc = config_json.find("testcases");
+  assert (tc != config_json.end());
+  for (unsigned int i = 0; i < tc->size(); i++) {
+
+    TestCase my_testcase = TestCase::MakeTestCase((*tc)[i]);
+
+    std::string title = "Test " + std::to_string(i+1) + " " + (*tc)[i].value("title","MISSING TITLE");
+    int points = (*tc)[i].value("points",0);
+
+    std::cout << "------------------------------------------\n" << title << " - points: " << points << std::endl;
     
     // START JSON FOR TEST CASE
-    std::vector<std::string> testcase_vector;
-    testcase_vector.push_back("\t\t\t\"test_name\": \"" + testcases[i].title() + "\"");
-    testcase_vector.push_back("\t\t\t\"execute_logfile\": \"" + testcases[i].prefix() + "_execute_logfile.txt\"");
 
+    nlohmann::json tc_j;
+    tc_j["test_name"] = title;
+    tc_j["execute_logfile"] = my_testcase.prefix() + "_execute_logfile.txt";
     int testcase_pts = 0;
     std::string message = "";
 
     // FILE EXISTS & COMPILATION TESTS DON'T HAVE FILE COMPARISONS
-    if (testcases[i].isFileExistsTest()) {
+    if (my_testcase.isFileExistsTest()) {
 
-      std::cerr << "THIS IS A FILE EXISTS TEST! " << testcases[i].getFilename() << std::endl;
-      assert (testcases[i].getFilename() != "");
+      std::cerr << "THIS IS A FILE EXISTS TEST! " << my_testcase.getFilename() << std::endl;
+      assert (my_testcase.getFilename() != "");
 
-      if ( access( (std::string("")+testcases[i].getFilename()).c_str(), F_OK|R_OK|W_OK ) != -1 ) { /* file exists */
-        std::cerr << "file does exist: " << testcases[i].getFilename() << std::endl;
-        testcase_pts = testcases[i].points();
+      if ( access( (std::string("")+my_testcase.getFilename()).c_str(), F_OK|R_OK|W_OK ) != -1 ) { /* file exists */
+        std::cerr << "file does exist: " << my_testcase.getFilename() << std::endl;
+        testcase_pts = my_testcase.points();
       }
       else {
-        std::cerr << "ERROR file DOES NOT exist: " << testcases[i].getFilename() << std::endl;
-        message += "Error: " + testcases[i].getFilename() + " was not found!";
+        std::cerr << "ERROR file DOES NOT exist: " << my_testcase.getFilename() << std::endl;
+        message += "Error: " + my_testcase.getFilename() + " was not found!";
       }
     }
-    else if (testcases[i].isCompilationTest()) {
+    else if (my_testcase.isCompilationTest()) {
       std::cerr << "THIS IS A COMPILATION! " << std::endl;
 
-      if ( access( testcases[i].getFilename().c_str(), F_OK|R_OK|W_OK ) != -1 ) { /* file exists */
-        std::cerr << "file does exist: " << testcases[i].getFilename() << std::endl;
+      if ( access( my_testcase.getFilename().c_str(), F_OK|R_OK|W_OK ) != -1 ) { /* file exists */
+        std::cerr << "file does exist: " << my_testcase.getFilename() << std::endl;
         // CHECK IF WARNINGS EXIST
-        std::ifstream ifstr(testcases[i].prefix() + "_STDERR.txt");
-        if(!ifstr) std::cerr << testcases[i].prefix() <<  "_STDERR.txt" << " not open.";
+        std::ifstream ifstr(my_testcase.prefix() + "_STDERR.txt");
+        if(!ifstr) std::cerr << my_testcase.prefix() <<  "_STDERR.txt" << " not open.";
         else if(ifstr.peek() != std::ifstream::traits_type::eof()){
-          std::cerr << testcases[i].prefix() <<  "_STDERR.txt" << " not empty.";
-          testcase_pts = (int)floor( testcases[i].points()*(1 - testcases[i].get_warning_frac()) );
+          std::cerr << my_testcase.prefix() <<  "_STDERR.txt" << " not empty.";
+          testcase_pts = (int)floor( my_testcase.points()*(1 - my_testcase.get_warning_frac()) );
           message += "Unresolved warnings in your program!";
         }
         else{
-          testcase_pts = testcases[i].points();
+          testcase_pts = my_testcase.points();
         }
       }
       else {
-        std::cerr << "ERROR file DOES NOT exist: " << testcases[i].getFilename() << std::endl;
+        std::cerr << "ERROR file DOES NOT exist: " << my_testcase.getFilename() << std::endl;
         message += "Error: compilation was not successful!";
       }
-      if (testcases[i].isCompilationTest()) {
-        testcase_vector.push_back("\t\t\t\"compilation_output\": \"" + testcases[i].prefix() + "_STDERR.txt\"");
+      if (my_testcase.isCompilationTest()) {
+        tc_j["compilation_output"] = my_testcase.prefix() + "_STDERR.txt";
       }
     }
-    else {
-      // ALL OTHER TESTS HAVE 1 OR MORE FILE COMPARISONS
-      std::vector<std::string> diff_vectors;
+    else {   // ALL OTHER TESTS HAVE 1 OR MORE FILE COMPARISONS
+      nlohmann::json autocheck_js;
       double my_score = 1.0;
-      double fraction_sum = 0.0;
-      
-      for (int j = 0; j < testcases[i].numFileGraders(); j++) {
-        std::vector<std::string> diff_vector;
-
-        std::cerr << "comparison #" << j << std::endl;
-        std::string helper_message = "";
-
-        TestResults *result = testcases[i].do_the_grading(j,helper_message);
-
-        // PREPARE THE JSON DIFF FILE
-        std::stringstream diff_path;
-        diff_path << testcases[i].prefix() << "_" << j << "_diff.json";
-        std::ofstream diff_stream(diff_path.str().c_str());
-
-        if (result != NULL) {
-          // THE GRADE (will be compiled across all comparisons)
-          std::cout << "result->getGrade() = " << result->getGrade() << std::endl;
-	  assert (result->getGrade() >= 0.0 && result->getGrade() <= 1.0);
-
-          double pts_fraction = testcases[i].test_case_grader_vec[j]->points_fraction;
-          std::cout << "pts_fraction = " << pts_fraction << std::endl;
-
-          if (pts_fraction < -0.5) {
-            pts_fraction = 1 / double(testcases[i].numFileGraders());
+      for (int j = 0; j < my_testcase.numFileGraders(); j++) {
+        std::cerr << "autocheck #" << j << std::endl;
+        TestResults *result = my_testcase.do_the_grading(j);
+        assert (result != NULL);
+        // loop over the student files
+        std::vector<std::string> filenames = stringOrArrayOfStrings(my_testcase.test_case_grader_vec[j],"filename");
+        for (int FN = 0; FN < filenames.size(); FN++) {
+          // JSON FOR THIS COMPARISON
+          nlohmann::json autocheck_j; 
+          autocheck_j["student_file"] = my_testcase.prefix() + "_" + filenames[FN];
+          std::string expected = "";
+          expected = my_testcase.test_case_grader_vec[j].value("instructor_file", "");
+          if (GLOBAL_replace_string_before != "") {
+            while (1) {
+              int location = expected.find(GLOBAL_replace_string_before);
+              if (location == std::string::npos) break;
+              expected.replace(location,GLOBAL_replace_string_before.size(),GLOBAL_replace_string_after);
+            }
           }
-          fraction_sum += pts_fraction;
-	  
-          my_score -= pts_fraction*(1-result->getGrade());
-
-          std::cout << "my_score = " << my_score << std::endl;
-
-          result->printJSON(diff_stream);
-          helper_message += " " + result->get_message();
-          // CLEANUP THIS COMPARISON
-          delete result;
+          std::string autocheckid = std::to_string(j);
+          if (filenames.size() > 1) {
+            autocheckid += "_" + std::to_string(FN);
+            assert (expected == "");
+          }
+          autocheck_j["autocheck_id"] = my_testcase.prefix() + "_" + autocheckid + "_autocheck";
+          //std::string dm = my_testcase.test_case_grader_vec[j].value("display_mode",""); //->display_mode();
+          //if (dm != "") { autocheck_j["display_mode"] = dm; }
+          if (expected != "") { // PREPARE THE JSON DIFF FILE
+            std::stringstream diff_path;
+            diff_path << my_testcase.prefix() << "_" << j << "_diff.json";
+            std::ofstream diff_stream(diff_path.str().c_str());
+            result->printJSON(diff_stream);
+            std::stringstream expected_path;
+            std::string id = hw_id;
+            std::string expected_out_dir = "test_output/" + id + "/";
+            expected_path << expected_out_dir << expected;
+            autocheck_j["instructor_file"] = expected_path.str();
+            autocheck_j["difference"] = my_testcase.prefix() + "_" + std::to_string(j) + "_diff.json";
+          }
+          autocheck_j["description"] = my_testcase.description(j);
+          if (FN==0) {
+            for (int m = 0; m < result->getMessages().size(); m++) {
+              if (result->getMessages()[m] != "")
+                autocheck_j["messages"].push_back(result->getMessages()[m]); 
+            }
+          }
+          autocheck_js.push_back(autocheck_j);
         }
-
-        // JSON FOR THIS COMPARISON
-        diff_vector.push_back("\t\t\t\t\t\"diff_id\":\"" + testcases[i].prefix() + "_" + std::to_string(j) + "_diff\"");
-
-	std::string dm = testcases[i].test_case_grader_vec[j]->display_mode();
-	if (dm != "") {
-	  diff_vector.push_back("\t\t\t\t\t\"display_mode\":\""+dm+"\"");
-	}
-
-        diff_vector.push_back("\t\t\t\t\t\"student_file\":\"" + testcases[i].filename(j) + "\"");
-
-        std::string expected = "";
-        if (testcases[i].test_case_grader_vec[j] != NULL) {
-          expected = testcases[i].test_case_grader_vec[j]->getExpected();
-        }
-
-
-
-	//#ifdef __CUSTOMIZE_AUTO_GRADING_REPLACE_STRING__
-	if (GLOBAL_replace_string_before != "") {
-	  std::cout << "BEFORE " << expected << std::endl;
-	  while (1) {
-	    int location = expected.find(GLOBAL_replace_string_before);
-	    if (location == std::string::npos) 
-	      break;
-	    expected.replace(location,GLOBAL_replace_string_before.size(),GLOBAL_replace_string_after);
-	  }
-	  std::cout << "AFTER  " << expected << std::endl;
-	}
-	//#endif
-	
-
-
-
-        if (expected != "") {
-          std::stringstream expected_path;
-          std::string id = hw_id;
-          std::string expected_out_dir = "test_output/" + id + "/";
-          expected_path << expected_out_dir << expected;
-          diff_vector.push_back("\t\t\t\t\t\"instructor_file\":\"" + expected_path.str() + "\"");
-          diff_vector.push_back("\t\t\t\t\t\"difference\":\"" + testcases[i].prefix() + "_" + std::to_string(j) + "_diff.json\"");
-        }
-
-        diff_vector.push_back("\t\t\t\t\t\"description\": \"" + testcases[i].description(j) + "\"");
-        if (helper_message != "") {
-          diff_vector.push_back("\t\t\t\t\t\"message\": \"" + helper_message + "\"");
-        }
-        diff_vectors.push_back("\t\t\t\t{\n" + join(diff_vector) + "\t\t\t\t}");
+        std::cout << "result->getGrade() = " << result->getGrade() << std::endl;
+        assert (result->getGrade() >= 0.0 && result->getGrade() <= 1.0);
+        double deduction = my_testcase.test_case_grader_vec[j].value("deduction",1.0); 
+        assert (deduction >= -0.001 && deduction <= 1.001);
+        std::cout << "deduction multiplier = " << deduction << std::endl;
+        my_score -= deduction*(1-result->getGrade());
+        std::cout << "my_score = " << my_score << std::endl;
+         delete result;
+        result = NULL;
       } // END COMPARISON LOOP
 
-      testcase_vector.push_back("\t\t\t\"diffs\": [\n" + join(diff_vectors) + "\t\t\t]");
-
-      if (fraction_sum < 0.99 || fraction_sum > 1.01) {
-        std::cout << "WARNING: Fraction sum " << fraction_sum << std::endl;
-      }
-      assert (fraction_sum > 0.99); 
+      tc_j["autochecks"] = autocheck_js;
       assert (my_score <= 1.00001);
       my_score = std::max(0.0,std::min(1.0,my_score));
       std::cout << "[ FINISHED ] my_score = " << my_score << std::endl;
-      testcase_pts = (int)floor(my_score * testcases[i].points());
+      testcase_pts = (int)floor(my_score * my_testcase.points());
     } // end if/else of test case type
 
     // output grade & message
@@ -267,39 +244,48 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
 
     // TODO: LOGIC NEEDS TO BE TESTED WITH MORE COMPLEX HOMEWORK!
 
-    if (!testcases[i].hidden()) {
+    if (!my_testcase.hidden()) {
       nonhidden_auto_pts += testcase_pts;
-      if (testcases[i].extracredit()) {
-        nonhidden_extra_credit += testcase_pts; //testcases[i].points();
+      if (my_testcase.extra_credit()) {
+        nonhidden_extra_credit += testcase_pts; //my_testcase.points();
       }
       else {
-        nonhidden_possible_pts += testcases[i].points();
+        nonhidden_possible_pts += my_testcase.points();
       }
     } 
     hidden_auto_pts += testcase_pts;
-    if (testcases[i].extracredit()) {
-      hidden_extra_credit += testcase_pts; //testcases[i].points();
+    if (my_testcase.extra_credit()) {
+      hidden_extra_credit += testcase_pts; //my_testcase.points();
     }
     else {
-      hidden_possible_pts += testcases[i].points();
+      hidden_possible_pts += my_testcase.points();
     }
     
-    testcase_vector.push_back("\t\t\t\"points_awarded\": " + std::to_string(testcase_pts));
-
+    tc_j["points_awarded"] = testcase_pts;
     if (message != "") {
-      testcase_vector.push_back("\t\t\t\"message\": \"" + message + "\"");
+      tc_j["messages"].push_back(message);
     }
 
-    all_testcases.push_back("\t\t{\n" + join(testcase_vector) + "\t\t}");
+    all_testcases.push_back(tc_j); 
 
     gradefile << "  Test " << std::setw(2) << std::right << i+1 << ":" 
-        << std::setw(30) << std::left << testcases[i].just_title() << " " 
+        << std::setw(30) << std::left << my_testcase.just_title() << " " 
         << std::setw(2) << std::right << testcase_pts << " / " 
-        << std::setw(2) << std::right << testcases[i].points() << std::endl;
+        << std::setw(2) << std::right << my_testcase.points() << std::endl;
 
   } // end test case loop
 
+
+  nlohmann::json grading_parameters = config_json.value("grading_parameters",nlohmann::json::object());
+  int AUTO_POINTS         = grading_parameters.value("AUTO_POINTS",hidden_possible_pts);
+  int EXTRA_CREDIT_POINTS = grading_parameters.value("EXTRA_CREDIT_POINTS",0);
+  int TA_POINTS           = grading_parameters.value("TA_POINTS",0);
+  int TOTAL_POINTS        = grading_parameters.value("TOTAL_POINTS",AUTO_POINTS+TA_POINTS);
+  
+  int possible_ta_pts = TA_POINTS;
   int total_possible_pts = possible_ta_pts + hidden_possible_pts;
+
+  std::cout << "totals " << possible_ta_pts << " " << hidden_possible_pts << " " << TOTAL_POINTS << std::endl;
 
   std::cout << "penalty                 " <<  penalty << std::endl;
   std::cout << "nonhidden auto pts      " <<  nonhidden_auto_pts << std::endl;
@@ -314,17 +300,20 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
   assert (total_possible_pts == TOTAL_POINTS);
 
   /* Generate submission.json */
+  nlohmann::json sj;
+  sj["submission_number"] = subnum;
+  sj["points_awarded"] = hidden_auto_pts;
+  sj["nonhidden_points_awarded"] = nonhidden_auto_pts;
+  sj["extra_credit_points_awarded"] = hidden_extra_credit;
+  sj["non_extra_credit_points_awarded"] = hidden_auto_pts - hidden_extra_credit;
+  sj["submission_time"] = subtime;
+  sj["testcases"] = all_testcases;
+
+
   std::ofstream json_file("submission.json");
-  json_file << "{\n"
-            << "\t\"submission_number\": " << subnum << ",\n"
-            << "\t\"points_awarded\": " << hidden_auto_pts << ",\n"
-            << "\t\"nonhidden_points_awarded\": " << nonhidden_auto_pts << ",\n"
-	    << "\t\"extra_credit_points_awarded\": " << hidden_extra_credit << ",\n"
-	    << "\t\"non_extra_credit_points_awarded\": " << hidden_auto_pts - hidden_extra_credit << ",\n"
-            << "\t\"submission_time\": \"" << subtime << "\",\n"
-            << "\t\"testcases\": [\n";
-  json_file << join(all_testcases) << "\t]\n"
-      << "}";
+  json_file << sj.dump(4);
+
+
   json_file.close();
 
   gradefile << "Automatic extra credit (w/o hidden):               " << "+ " << nonhidden_extra_credit << " points" << std::endl;
@@ -339,18 +328,6 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
   return 0;
 }
 
-std::string join(std::vector<std::string> strings) {
-  std::stringstream ss;
-  for (int i = 0; i < strings.size(); i++) {
-    if (i == strings.size()-1) {
-      ss << strings[i] << "\n";
-    }
-    else {
-      ss << strings[i] << ",\n";
-    }
-  }
-  return ss.str();
-}
 
 // =====================================================================
 // =====================================================================
