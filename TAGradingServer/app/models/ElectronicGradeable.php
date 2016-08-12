@@ -7,8 +7,7 @@ use \lib\ExceptionHandler;
 use \lib\FileUtils;
 use \lib\ServerException;
 use \lib\Utils;
-
-//TODO replace RCS references
+use \app\models\User;
 
 /**
  * Class ElectronicGradeable
@@ -53,6 +52,8 @@ class ElectronicGradeable {
      * @var null|int
      */
     public $g_id;
+    
+    public $autograding_points = 0;
 
     /**
      * Do we have a grade for this student on this gradeable in the database?
@@ -151,6 +152,13 @@ class ElectronicGradeable {
      * @var array
      */
     public $questions_count = array();
+    
+    
+    /**
+     * @var float
+     * The maximum score for autograding excluding extra credit
+    **/
+    public $autograding_max = 0;
 
     /**
      * @var array
@@ -173,7 +181,6 @@ class ElectronicGradeable {
 
             $this->student_id = $student_id;
             $this->g_id = $g_id;
-
             $this->setEGDetails();
             $this->setStudentDetails();
             $this->setEGSubmissionDetails();
@@ -194,55 +201,49 @@ class ElectronicGradeable {
      * @throws \InvalidArgumentException
      */
      
-     // TODO USE NEW USER TABLE 
-     
     private function setStudentDetails() {
         if (!isset($this->student)) {
             
 //GETS THE ALLOWED LATE DAYS FOR A STUDENT AS OF THE SUBMISSION DATE
-           /* Database::query("
-SELECT s.*, COALESCE(ld.allowed_lates,0) as student_allowed_lates
-FROM students as s
+           Database::query("
+SELECT s.*, COALESCE(ld.allowed_late_days,0) as student_allowed_lates
+FROM users as s
 LEFT JOIN (
-    SELECT allowed_lates
+    SELECT allowed_late_days
     FROM late_days
-    WHERE since_timestamp <= ? and student_id=?
+    WHERE since_timestamp <= ? and user_id=?
     ORDER BY since_timestamp DESC
 ) as ld on 1=1
-WHERE s.student_id=? LIMIT 1", array($this->eg_details['eg_submission_due_date'], $this->student_id, $this->student_id));
+WHERE s.user_id=? LIMIT 1", array($this->eg_details['eg_submission_due_date'], $this->student_id, $this->student_id));
             $this->student = Database::row();
             if ($this->student == array()) {
                 throw new \InvalidArgumentException("Could not find student '{$this->student_id}'");
             }
 
             $params = array($this->student_id, $this->eg_details['g_id']);
-            Database::query("SELECT * FROM late_day_exceptions WHERE ex_student_id=? AND ex_rubric_id=?", $params);
+            Database::query("SELECT * FROM late_day_exceptions WHERE user_id=? AND g_id=?", $params);
             $row = Database::row();
-            $this->late_days_exception = (isset($row['ex_late_days'])) ? $row['ex_late_days'] : 0;
+            $this->late_days_exception = (isset($row['late_day_exceptions'])) ? $row['late_day_exceptions'] : 0;
 
+            // late days used for the semester as of submission date
             $params = array($this->student_id, $this->eg_details['eg_submission_due_date']);
-//TODO factor in the status
-//DETERMINE THE NUMBER OF LATE DAYS USED FOR A GRADEABLE 
             Database::query("
-SELECT GREATEST(SUM(g.grade_days_late) - COALESCE(SUM(s.ex_late_days),0),0) as used_late_days
-FROM grades as g
-    LEFT JOIN
-    (
-        SELECT * FROM late_day_exceptions
-    ) as s on s.ex_rubric_id = g.rubric_id and s.ex_student_id=g.student_id
-    LEFT JOIN
-    (
-        SELECT rubric_id, rubric_due_date FROM rubrics
-    ) as r on r.rubric_id = g.rubric_id
-WHERE g.student_id=? AND r.rubric_due_date<?", $params); 
+SELECT 
+    SUM(GREATEST(late_days_used - COALESCE(late_day_exceptions,0),0)) AS used_late_days
+FROM 
+    late_days_used ldu INNER JOIN electronic_gradeable AS eg
+    ON ldu.g_id = eg.g_id LEFT JOIN late_day_exceptions AS lde ON
+    lde.g_id = eg.g_id    
+WHERE 
+    ldu.user_id=?
+AND 
+     eg.eg_submission_due_date <=?
+GROUP BY 
+    ldu.user_id", $params); 
+
             $row = Database::row();
-            $this->student['used_late_days'] = isset($row['used_late_days']) ? $row['used_late_days'] : 0;
-        }*/
-            Database::query("SELECT * FROM users WHERE user_id=?", array($this->student_id));
-            $this->student = Database::row();
-            $this->late_days_exception = 0;
-            $this->student['used_late_days'] = 0;
-            $this->student['student_allowed_lates'] = 2;
+
+            $this->student['used_late_days'] = (isset($row['used_late_days']) ? $row['used_late_days'] : 0);
         }
     }
 
@@ -264,21 +265,27 @@ SELECT g_title, gd_overall_comment, g_grade_start_date, eg.* FROM electronic_gra
         
         $this->eg_details = Database::row();
         
-        // CREATE THE GRADEABLE DATA
         if (empty($this->eg_details)) {
-            // TODO FACTOR IN LATE DAYS                     //TODO replace with grader id
-            $params = array($this->g_id, $this->student_id, $this->student_id, '', 0,0,1); 
+            //get the active version 
+            $assignment_settings = __SUBMISSION_SERVER__."/submissions/".$this->g_id."/".$this->student_id."/user_assignment_settings.json";
+            if (!file_exists($assignment_settings)) {
+                $active_version = -1;
+            }
+            else{
+                $assignment_settings_contents = file_get_contents($assignment_settings);
+                $results = json_decode($assignment_settings_contents, true);
+                $active_version = $results['active_version'];
+            }
+                                                                    ///TODO UPDATE THE STATUS 
+            $params = array($this->g_id, $this->student_id, User::$user_id, '', 1,0,$active_version); 
             Database::query("INSERT INTO gradeable_data(g_id,gd_user_id,gd_grader_id,gd_overall_comment, gd_status,gd_late_days_used,gd_active_version) VALUES(?,?,?,?,?,?,?)", $params); 
             $this->gd_id = \lib\Database::getLastInsertId('gradeable_data_gd_id_seq');
             
             Database::query( $eg_details_query, array($this->student_id, $this->g_id));
         
             $this->eg_details = Database::row();
-            
         }
         else{
-            //get the gd_id 
-            //TODO change this to accounts
             $params=array($this->student_id, $this->g_id);
             Database::query("SELECT gd_id FROM gradeable as g INNER JOIN gradeable_data AS gd ON g.g_id=gd.g_id WHERE gd_user_id=? AND g.g_id =?", $params);
             $this->gd_id = Database::row()['gd_id'];
@@ -301,6 +308,20 @@ AND gd.gd_id=?
 ORDER BY gc_order ASC
         ", $params);
         $this->questions = Database::rows();
+        
+        $total = 0;
+        $build_file = __SUBMISSION_SERVER__."/config/build/build_".$this->g_id.".json";
+        if (file_exists($build_file)) {
+            $build_file_contents = file_get_contents($build_file);
+            $results = json_decode($build_file_contents, true);
+            foreach($results['testcases'] as $testcase){
+                $testcase_value = floatval($testcase['points']);
+                if ($testcase_value > 0 && !$testcase['extra_credit']){
+                    $total += $testcase_value;
+                }
+            }
+        }   
+        $this->autograding_max = $total; 
     }
 
     /**
@@ -332,9 +353,9 @@ ORDER BY gc_order ASC
             if (!$this->has_grade || !isset($this->active_assignment) || $this->active_assignment <= 0) {
                 if (file_exists(implode("/", array($submission_directory, "user_assignment_settings.json")))) {
                     $settings = json_decode(file_get_contents(implode("/", array($submission_directory, "user_assignment_settings.json"))), true);
-                    $this->active_assignment = $settings['active_assignment'];
+                    $this->active_assignment = $settings['active_version'];
                     // If the active_assignment is -1 in the file, then the submission was "cancelled"
-                    if ($settings['active_assignment'] == 0) {
+                    if ($settings['active_version'] == 0) {
                         continue;
                     }
                 }
@@ -383,21 +404,16 @@ ORDER BY gc_order ASC
                 // TODO: Convert this to using DateTime and DateTimeInterval objects
                 $date_submission = strtotime($details['submission_time']);
                 $date_due = strtotime($this->eg_details["eg_submission_due_date"]) + 1 + __SUBMISSION_GRACE_PERIOD_SECONDS__;
-                $late_days = round((($date_submission - $date_due) / (60 * 60 * 24)) + .5, 0);
-                $late_days = ($late_days < 0) ? 0 : $late_days;
+                $days_late = round((($date_submission - $date_due) / (60 * 60 * 24)) + .5, 0);
+                $this->days_late = ($days_late < 0) ? 0 : $days_late;
             }
-            
-            //print "Submission details file path: ". $submission_details; // checked 
 
             $details['directory'] = $result_directory;
 
             // We can lazy load the actual results till we need them (such as the diffs, etc.)
             $this->results_details = $details;
-            
-            //var_dump($this->results_details);
-            
+          
             $skip_files = array();
-            //$i = 0;
             foreach ($this->results_details['testcases'] as $testcase) {
                 if (isset($testcase['execute_logfile'])) {
                     $skip_files[] = $testcase['execute_logfile'];
@@ -407,15 +423,18 @@ ORDER BY gc_order ASC
                 }
                 if (isset($testcase['diffs'])){
                     foreach($testcase['diffs'] as $diff) {
-                        foreach(array('instructor_file', 'student_file', 'diff_id') as $file) {
+                        foreach(array("expected_file", "actual_file", "diff_id") as $file) {
                             if(isset($diff[$file])) {
                                 $skip_files[] = $diff[$file] . ($file == 'diff_id' ? '.json' : '');
                             }
                         }
                     }
                 }
+                //FIXME this won't work for extra credit auto-grading
+                if (isset($testcase['points_awarded'])){
+                    $this->autograding_points += $testcase['points_awarded'];
+                }
             }
-
             $this->eg_files = array_merge($this->eg_files, FileUtils::getAllFiles($result_directory, array(), $skip_files));
         }
     }
@@ -430,25 +449,22 @@ ORDER BY gc_order ASC
             return;
         }
         
-        //TODO update with late days IMPLEMENT THIS 
-        /*
+        Database::query("SELECT * FROM late_days_used WHERE user_id=? AND g_id=?", array($this->student_id, $this->eg_details['g_id']));
+        
+        $submitted_lates = isset( Database::row()['g_id']);
+        
         // IF MORE LATEDAYS WERE USED ON THIS ASSIGNMENT THAN ALLOWED => FAIL
-        if ($this->eg_details['rubric_late_days'] >= 0 &&
-            $this->parts_days_late_used[$i] > $this->eg_details['rubric_late_days']) {
-            //$this->parts_status[$i] = 0;
-            $this->status =0;
+        if ($this->days_late > ($this->eg_details['eg_late_days'] + $this->late_days_exception)) {
+            $this->status=0;
         }
         // IF MORE LATEDAYS WERE USED THAN THE STUDENT IS ALLOWED => FAIL
-        else if ($this->student['student_allowed_lates'] >= 0 &&
-            $this->student['used_late_days'] + $this->parts_days_late_used[$i] > $this->student['student_allowed_lates']) {
-            //$this->parts_status[$i] = 0;
+        else if ($this->student['student_allowed_lates'] >= 0 && !$submitted_lates && 
+                 $this->days_late + $this->student['used_late_days'] > $this->student['student_allowed_lates']) {
             $this->status = 0;
         }
-
         else{
             $this->status = 1;
-        }*/
-        $this->status = 1;
+        }
     }
 
     /**
@@ -482,7 +498,7 @@ ORDER BY gc_order ASC
                 }
             }
 
-            if (!$question['gc_is_extra_credit']) {
+            if (!$question['gc_is_extra_credit'] && $question['gc_max_value'] > 0) {
                 $total += $question['gc_max_value'];
             }
         }

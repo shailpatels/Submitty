@@ -3,14 +3,14 @@
         {
             "title" : "Lab 1 Checkpoint 1",
             "details" : "python *.py",
-            "command" : "/usr/bin/python *.py",
+            "command" : "python *.py",
             "points" : 0,
             "validation" : [
                 {
                     "method" : "myersDiffbyLinebyChar",
-                    "filename" : "STDOUT.txt",
+                    "actual_file" : "STDOUT.txt",
                     "description" : "Program Output",
-                    "instructor_file" : "hw01part1_sol.txt"
+                    "expected_file" : "hw01part1_sol.txt"
                 }
             ]
         }

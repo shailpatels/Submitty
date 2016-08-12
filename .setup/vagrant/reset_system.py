@@ -8,6 +8,7 @@ in configuration files or pre-existing databses.
 """
 
 import os
+import pwd
 import shutil
 import subprocess
 import tempfile
@@ -56,7 +57,8 @@ if __name__ == '__main__':
     remove_file("/etc/motd");
 
     # Scrub the hosts file
-    hosts = ["192.168.56.101    test-submit test-submit.cs.rpi.edu", "192.168.56.102    test-svn test-svn.cs.rpi.edu",
+    hosts = ["192.168.56.101    test-submit test-submit.cs.rpi.edu",
+             "192.168.56.102    test-svn test-svn.cs.rpi.edu",
              "192.168.56.103    test-hwgrading test-hwgrading.cs.rpi.edu hwgrading"]
     remove_lines("/etc/hosts", hosts)
 
@@ -69,16 +71,20 @@ if __name__ == '__main__':
     shutil.rmtree('/var/local/submitty', True)
     shutil.rmtree('/var/lib/svn', True)
 
-    # If we have psql cmd available, then PostgreSQL is installed so we should scrub out any submitty DBs
-    if (cmd_exists('psql')):
+    # If we have psql cmd available, then PostgreSQL is installed so we should scrub out any
+    # submitty DBs
+    if cmd_exists('psql'):
         os.environ['PGPASSWORD'] = 'hsdbu'
-        os.system("psql -h localhost -U hsdbu --list | grep submitty_* | awk '{print $1}' | xargs -I \"@@\" dropdb -h localhost -U hsdbu \"@@\"")
+        os.system("psql -h localhost -U hsdbu --list | grep submitty_* | awk '{print $1}' | "
+                  "xargs -I \"@@\" dropdb -h localhost -U hsdbu \"@@\"")
         del os.environ['PGPASSWORD']
 
-        psql_version = subprocess.check_output("psql -V | egrep -o '[0-9]{1,}\.[0-9]{1,}'", shell=True).strip()
-        lines = ["hostssl    all    all    192.168.56.0/24    pam", "host       all    all    192.168.56.0/24    pam",
+        psql_version = subprocess.check_output("psql -V | egrep -o '[0-9]{1,}\.[0-9]{1,}'",
+                                               shell=True).strip()
+        lines = ["hostssl    all    all    192.168.56.0/24    pam",
+                 "host       all    all    192.168.56.0/24    pam",
                  "host       all    all    all                md5"]
-        remove_lines('/etc/postgresql/' + psql_version + '/main/pg_hba.conf', lines)
+        remove_lines('/etc/postgresql/' + str(psql_version) + '/main/pg_hba.conf', lines)
 
     for i in range(0, 60):
         j = str(i).zfill(2)
@@ -99,15 +105,20 @@ if __name__ == '__main__':
                 file_path = os.path.join(folder, the_file)
                 remove_file(file_path)
 
-    remove_lines('/etc/apache2/apache2.conf', ["ServerName 10.0.2.15"])
+    #remove_lines('/etc/apache2/apache2.conf', ["ServerName 10.0.2.15"])
 
     shutil.rmtree('/root/bin', True)
+    users = ["instructor", "ta", "developer", "student", "smithj", "hwphp", "hwcgi", "hwcron", "hsdbu"]
 
-    users = ["instructor", "ta", "developer", "student", "hwphp", "hwphp-cgi", "hwcron", "hsdbu"]
     for user in users:
-        os.system("userdel " + user)
-        if os.path.isdir("/home/" + user):
-            shutil.rmtree("/home/" + user)
+        try:
+            pwd.getpwnam(user)
+            os.system("userdel " + user)
+            if os.path.isdir("/home/" + user):
+                shutil.rmtree("/home/" + user)
+        except KeyError:
+            # user doesn't exist, so skip that person
+            pass
 
     groups = ["hwcronphp", "course_builders"]
     courses = ["csci1000", "csci1100", "csci1200", "csci2600"]

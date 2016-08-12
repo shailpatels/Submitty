@@ -2,11 +2,6 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 9.3.13
--- Dumped by pg_dump version 9.5.1
-
--- Started on 2016-07-14 16:19:06 EDT
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET client_encoding = 'UTF8';
@@ -15,7 +10,6 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
--- TOC entry 1 (class 3079 OID 11756)
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
 --
 
@@ -23,8 +17,6 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- TOC entry 2161 (class 0 OID 0)
--- Dependencies: 1
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
 --
 
@@ -38,16 +30,21 @@ SET search_path = public, pg_catalog;
 --
 
 CREATE FUNCTION check_valid_score(numeric, integer) RETURNS boolean
-LANGUAGE plpgsql
-AS $_$
+    LANGUAGE plpgsql
+    AS $_$
 declare
-    valid_score BOOLEAN;
+valid_score BOOLEAN;
 BEGIN
-    SELECT $1<=gc_max_value INTO valid_score FROM gradeable_component AS gc WHERE gc.gc_id=$2;
-    RETURN valid_score;
+   SELECT
+   CASE WHEN gc_max_value >=0 THEN $1<=gc_max_value AND $1>=0
+        ELSE $1>=gc_max_value AND $1<=0
+   END INTO valid_score FROM gradeable_component AS gc WHERE gc.gc_id=$2;
+   RETURN valid_score;
 END;
 $_$;
 
+
+SET default_tablespace = '';
 
 SET default_with_oids = false;
 
@@ -83,7 +80,8 @@ CREATE TABLE gradeable (
     g_grade_start_date timestamp(6) without time zone NOT NULL,
     g_grade_released_date timestamp(6) without time zone NOT NULL,
     g_syllabus_bucket character varying(255) NOT NULL,
-    g_min_grading_group integer NOT NULL
+    g_min_grading_group integer NOT NULL,
+    g_closed_date timestamp(6) without time zone
 );
 
 
@@ -122,11 +120,11 @@ CREATE TABLE gradeable_component_data (
 --
 
 CREATE SEQUENCE gradeable_component_gc_id_seq
-START WITH 1
-INCREMENT BY 1
-NO MINVALUE
-NO MAXVALUE
-CACHE 1;
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
 --
@@ -157,11 +155,11 @@ CREATE TABLE gradeable_data (
 --
 
 CREATE SEQUENCE gradeable_data_gd_id_seq
-START WITH 1
-INCREMENT BY 1
-NO MINVALUE
-NO MAXVALUE
-CACHE 1;
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
 
 --
@@ -213,6 +211,18 @@ CREATE TABLE late_days (
     since_timestamp timestamp without time zone NOT NULL
 );
 
+
+--
+-- Name: late_days_used; Type: TABLE; Schema: public; Owner: -; Tablespace:
+--
+
+CREATE TABLE late_days_used (
+    user_id character varying(255) NOT NULL,
+    g_id character varying(255) NOT NULL,
+    late_days_used integer NOT NULL
+);
+
+
 --
 -- Name: sections_registration; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
@@ -220,6 +230,7 @@ CREATE TABLE late_days (
 CREATE TABLE sections_registration (
     sections_registration_id integer NOT NULL
 );
+
 
 --
 -- Name: sections_rotating; Type: TABLE; Schema: public; Owner: -; Tablespace:
@@ -231,8 +242,7 @@ CREATE TABLE sections_rotating (
 
 
 --
--- TOC entry 197 (class 1259 OID 17802)
--- Name: sessions; Type: TABLE; Schema: public; Owner: -
+-- Name: session; Type: TABLE; Schema: public; Owner: -; Tablespace:
 --
 
 CREATE TABLE sessions (
@@ -241,6 +251,7 @@ CREATE TABLE sessions (
     csrf_token character varying(255) NOT NULL,
     session_expires timestamp without time zone NOT NULL
 );
+
 
 --
 -- Name: users; Type: TABLE; Schema: public; Owner: -; Tablespace:
@@ -326,7 +337,7 @@ ALTER TABLE ONLY late_day_exceptions
 --
 
 ALTER TABLE ONLY late_days
-    ADD CONSTRAINT late_days_pkey PRIMARY KEY (user_id);
+    ADD CONSTRAINT late_days_pkey PRIMARY KEY (user_id, since_timestamp);
 
 
 --
@@ -366,7 +377,8 @@ ALTER TABLE ONLY users
 --
 
 ALTER TABLE ONLY sessions
-    ADD CONSTRAINT sessions_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON UPDATE CASCADE ON DELETE CASCADE;
+    ADD CONSTRAINT sessions_fkey FOREIGN KEY (user_id) REFERENCES users(user_id);
+
 
 --
 -- Name: electronic_gradeable_g_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -469,7 +481,7 @@ ALTER TABLE ONLY grading_rotating
 --
 
 ALTER TABLE ONLY late_day_exceptions
-    ADD CONSTRAINT late_day_exceptions_g_id_fkey FOREIGN KEY (g_id) REFERENCES gradeable(g_id);
+    ADD CONSTRAINT late_day_exceptions_g_id_fkey FOREIGN KEY (g_id) REFERENCES gradeable(g_id) ON DELETE CASCADE;
 
 
 --
@@ -477,7 +489,23 @@ ALTER TABLE ONLY late_day_exceptions
 --
 
 ALTER TABLE ONLY late_day_exceptions
-    ADD CONSTRAINT late_day_exceptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id);
+    ADD CONSTRAINT late_day_exceptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: late_days_used_g_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY late_days_used
+    ADD CONSTRAINT late_days_used_g_id_fkey FOREIGN KEY (g_id) REFERENCES gradeable(g_id) ON DELETE CASCADE;
+
+
+--
+-- Name: late_days_used_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY late_days_used
+    ADD CONSTRAINT late_days_used_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
 
 
 --
@@ -503,7 +531,6 @@ ALTER TABLE ONLY users
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_rotating_section_fkey FOREIGN KEY (rotating_section) REFERENCES sections_rotating(sections_rotating_id);
 
--- Completed on 2016-07-14 16:19:07 EDT
 
 --
 -- PostgreSQL database dump complete

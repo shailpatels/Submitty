@@ -1,6 +1,8 @@
 <?php
 use app\models\User;
 
+use \app\models\ElectronicGradeable;
+
 	include "../header.php";
 
 	$account_subpages_unlock = true;
@@ -21,6 +23,7 @@ FROM
 WHERE 
     g.g_id=?
     AND NOT gc_is_extra_credit
+    AND gc_max_value > 0
 GROUP BY 
     g.g_id", $params);
 	$gradeable_info = $db->row();
@@ -44,7 +47,7 @@ FROM
         GROUP BY 
             g_id, 
             gd_user_id
-	) as gt ON gt.gd_user_id=s.user_id"; 
+	) as gt ON gt.gd_user_id=s.user_id "; 
 
 print <<<HTML
 	<style type="text/css">
@@ -100,7 +103,6 @@ else {
         $button = "";
     }
     
-    
     $rubric_total = $gradeable_info["score"];
     
     print <<<HTML
@@ -133,15 +135,15 @@ HTML;
     
     if(!((isset($_GET["all"]) && $_GET["all"] == "true") || $user_is_administrator == true)) {
         $params = array($user_id);
-        $query = ($grade_by_reg_section) ? "SELECT sections_registration_id FROM grading_registration WHERE user_id=? ORDER BY sections_registration_id"
+        $s_query = ($grade_by_reg_section) ? "SELECT sections_registration_id FROM grading_registration WHERE user_id=? ORDER BY sections_registration_id"
                                          : "SELECT sections_rotating FROM grading_rotating WHERE user_id=? ORDER BY sections_rotating";
-        $db->query($query, $params);
+        $db->query($s_query, $params);
         $sections = array();
         foreach ($db->rows() as $section) {
             $sections[] = $section[$section_section_field];
         }
         if(count($sections) > 0){
-            $where[] = "s.".$user_section_field."IN (" . implode(",", $sections) . ")";
+            $where[] = "s.".$user_section_field." IN (" . implode(",", $sections) . ")";
         } else {
             $where[] = "s.user_id = null";
         }
@@ -167,6 +169,7 @@ HTML;
     $students = $db->rows();
 
     foreach ($students as $student) {
+        $eg = new ElectronicGradeable($student["user_id"], $g_id);
         if($prev_section !== $student[$user_section_field]) {
             $section_id = intval($student[$user_section_field]);
             print <<<HTML
@@ -190,7 +193,8 @@ HTML;
         if(count($students) > 0) {
             if(isset($row['score'])) {
                 if($row['score'] >= 0) {
-                    echo "<a class='btn' href='{$BASE_URL}/account/index.php?g_id=" . $_GET["g_id"] . "&individual=" . $student["user_id"] . "'>[ " . $row['score'] . " / " . $rubric_total . " ]</a>";
+                    echo "<a class='btn' href='{$BASE_URL}/account/index.php?g_id=" . $_GET["g_id"] . "&individual=" . $student["user_id"] . "'>[ " . ($row['score'] +$eg->autograding_points). 
+                           " / " . ($rubric_total + $eg->autograding_max) . " ]</a>";
                 } else {
                     echo "<a class='btn btn-danger' href='{$BASE_URL}/account/index.php?g_id=" . $_GET["g_id"] . "&individual=" . $student["user_id"] . "'>[ GRADING ERROR ]</a>";
                 }

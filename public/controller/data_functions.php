@@ -388,7 +388,7 @@ function upload_homework($username, $semester, $course, $assignment_id, $num_par
 
     $settings_file = $user_path."/user_assignment_settings.json";
     if (!file_exists($settings_file)) {
-        $json = array("active_assignment"=>$upload_version, "history"=>array(array("version"=>$upload_version, "time"=>date("Y-m-d H:i:s"))));
+        $json = array("active_version"=>$upload_version, "history"=>array(array("version"=>$upload_version, "time"=>date("Y-m-d H:i:s"))));
         file_put_contents($settings_file, json_encode($json, JSON_PRETTY_PRINT));
     }
     else {
@@ -1162,7 +1162,7 @@ function get_active_version($username, $semester,$course, $assignment_id) {
       return -1; // no submissions
     }
     $json = json_decode(removeTrailingCommas(file_get_contents($file)), true);
-    return $json["active_assignment"];
+    return $json["active_version"];
 }
 
 function change_assignment_version($username, $semester,$course, $assignment_id, $assignment_version, $assignment_config) {
@@ -1186,7 +1186,7 @@ function change_assignment_version($username, $semester,$course, $assignment_id,
         return;
     }
     $json = json_decode(removeTrailingCommas(file_get_contents($file)), true);
-    $json["active_assignment"] = (int)$assignment_version;
+    $json["active_version"] = (int)$assignment_version;
     $json["history"][] = array("version"=>(int)$assignment_version, "time"=>date("Y-m-d H:i:s"));
 
 /* // php symlinks disabled on server for security reasons
@@ -1238,25 +1238,25 @@ function get_testcase_diff($username, $semester,$course, $assignment_id, $assign
     $student_path = "$path_front/results/$assignment_id/$username/$assignment_version/";
 
     $data = array();
-    $data["difference"] = "{differences:[]}";//This needs to be here to render the diff viewer without a teacher file
+    $data["difference_file"] = "{differences:[]}";//This needs to be here to render the diff viewer without a teacher file
 
-    if (isset($diff["instructor_file"])) {
-        $instructor_file_path = "$path_front/".$diff["instructor_file"];
-        if (file_exists($instructor_file_path)) {
-            $data["instructor"] = file_get_contents($instructor_file_path);
+    if (isset($diff["expected_file"])) {
+        $expected_file_path = "$path_front/".$diff["expected_file"];
+        if (file_exists($expected_file_path)) {
+            $data["instructor"] = file_get_contents($expected_file_path);
         }
     }
-    if (isset($diff["student_file"]) &&
-        file_exists($student_path . $diff["student_file"])) {
-        $file_size = filesize($student_path. $diff["student_file"]);
+    if (isset($diff["actual_file"]) &&
+        file_exists($student_path . $diff["actual_file"])) {
+        $file_size = filesize($student_path. $diff["actual_file"]);
         if ($file_size / 1024 < 10000) {
-            $data["student"] = file_get_contents($student_path.$diff["student_file"]);
+            $data["student"] = file_get_contents($student_path.$diff["actual_file"]);
         } else {
             $data["student"] = "ERROR: Unable to read student output file.  Student output file is greater than or equal to ". ($file_size / 1024). " kb.  File could be corrupted or is too large.";
         }
     }
-    if (isset($diff["difference"]) && file_exists($student_path . $diff["difference"])) {
-        $data["difference"] = file_get_contents($student_path.$diff["difference"]);
+    if (isset($diff["difference_file"]) && file_exists($student_path . $diff["difference_file"])) {
+        $data["difference_file"] = file_get_contents($student_path.$diff["difference_file"]);
     }
     return $data;
 }
@@ -1303,5 +1303,20 @@ function calculate_days_late($semester, $course, $assignment_id){
 function get_late_days_allowed($assignment_config){
   return 2;
   // TODO: Get max late days allowed for an assignment from the config
+}
+
+function get_gradeable_addresses($semester, $course) {
+    $path = get_path_front_course($semester,$course)."/config/form";
+    $addresses = array();
+    if (is_dir($path)) {
+        if ($handle = opendir($path)) {
+            while (($file = readdir($handle)) !== false) {
+                if (isset($file[0]) && $file[0] != ".") {
+                    $addresses[] = $path."/".$file;
+                }
+            }
+        }
+    }
+    return $addresses;
 }
 ?>

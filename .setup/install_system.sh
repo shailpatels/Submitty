@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# TIMEZONE
+timedatectl set-timezone America/New_York
+
 #PATHS
 SUBMITTY_REPOSITORY=/usr/local/submitty/GIT_CHECKOUT_Submitty
 SUBMITTY_INSTALL_DIR=/usr/local/submitty
@@ -38,7 +41,7 @@ if [ ${VAGRANT} == 1 ]; then
 ##  All user accounts have same password unless otherwise ##
 ##  noted below. The following user accounts exist:       ##
 ##    vagrant/vagrant, root/vagrant, hsdbu, hwphp,        ##
-##    hwphp-cgi hwcron, ta, instructor, developer,        ##
+##    hwcgi hwcron, ta, instructor, developer,            ##
 ##    postgres                                            ##
 ##                                                        ##
 ##  The following accounts have database accounts         ##
@@ -124,7 +127,7 @@ hardening-includes python python-pip p7zip-full patchutils postgresql-client pos
 unzip valgrind zip libmagic-ocaml-dev common-lisp-controller libboost-all-dev javascript-common \
 apache2-suexec-custom libapache2-mod-authnz-external libapache2-mod-authz-unixgroup libfile-mmagic-perl \
 libgnupg-interface-perl php5-pgsql php5-mcrypt libbsd-resource-perl libarchive-zip-perl gcc g++ g++-multilib jq libseccomp-dev \
-libseccomp2 seccomp junit cmake xlsx2csv libpcre3 libpcre3-dev flex bison
+libseccomp2 seccomp junit cmake libpcre3 libpcre3-dev flex bison
 
 apt-get install -qqy subversion subversion-tools
 apt-get install -qqy libapache2-svn
@@ -153,7 +156,9 @@ apt-get -qqy autoremove
 # TODO: We should look into making it so that only certain users have access to certain packages
 # so that hwphp is the only one who could use PAM for example
 pip install python-pam
-chmod 555 /usr/local/lib/python2.7/*
+pip install xlsx2csv
+
+chmod -R 555 /usr/local/lib/python2.7/*
 chmod 555 /usr/lib/python2.7/dist-packages
 
 #################################################################
@@ -305,7 +310,7 @@ if [ ${VAGRANT} == 1 ]; then
 	sed -i '25s/^/\#/' /etc/pam.d/common-password
 	sed -i '26s/pam_unix.so obscure use_authtok try_first_pass sha512/pam_unix.so obscure minlen=1 sha512/' /etc/pam.d/common-password
     # Set the ServerName
-	echo -e "\nServerName 10.0.2.15\n" >> /etc/apache2/apache2.conf
+	# echo -e "\nServerName 10.0.2.15\n" >> /etc/apache2/apache2.conf
 fi
 
 
@@ -384,16 +389,14 @@ grep -q "^UMASK 027" /etc/login.defs || (echo "ERROR! failed to set umask" && ex
 
 
 adduser hwphp --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
-adduser hwphp-cgi --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
-# TODO: REMOVE THIS REMOVE THIS REMOVE THIS REMOVE THIS
-adduser hwphp shadow
-adduser hwphp-cgi hwphp
-adduser hwphp-cgi shadow
+adduser hwcgi --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
+adduser hwcgi hwphp
+adduser hwcgi shadow
 if [ ${VAGRANT} == 1 ]; then
 	echo "hwphp:hwphp" | sudo chpasswd
-	echo "hwphp-cgi:hwphp-cgi" | sudo chpasswd
+	echo "hwcgi:hwcgi" | sudo chpasswd
 	adduser hwphp vagrant
-	adduser hwphp-cgi vagrant
+	adduser hwcgi vagrant
 fi
 adduser hwcron --gecos "First Last,RoomNumber,WorkPhone,HomePhone" --disabled-password
 if [ ${VAGRANT} == 1 ]; then
@@ -405,7 +408,7 @@ fi
 # might need to also set USERGROUPS_ENAB to "no", and manually create
 # the hwphp and hwcron single user groups.  See also /etc/login.defs
 echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwphp/.profile
-echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwphp-cgi/.profile
+echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwcgi/.profile
 echo -e "\n# set by the .setup/install_system.sh script\numask 027" >> /home/hwcron/.profile
 
 
@@ -510,6 +513,9 @@ fi
 #################
 if [ ${VAGRANT} == 1 ]; then
     git clone 'https://github.com/Submitty/AnalysisTools' ${SUBMITTY_INSTALL_DIR}/GIT_CHECKOUT_AnalysisTools
+    pushd ${SUBMITTY_INSTALL_DIR}/GIT_CHECKOUT_AnalysisTools
+    make ubuntudeps
+    popd
 fi
 
 #################################################################
@@ -562,8 +568,11 @@ service apache2 restart
 if [[ ${VAGRANT} == 1 ]]; then
     echo "student" >> ${SUBMITTY_DATA_DIR}/instructors/authlist
     echo "student" >> ${SUBMITTY_DATA_DIR}/instructors/valid
+    echo "smithj" >> ${SUBMITTY_DATA_DIR}/instructors/authlist
+    echo "smithj" >> ${SUBMITTY_DATA_DIR}/instructors/valid
     ${SUBMITTY_DATA_DIR}/bin/authonly.pl
     echo "student:student" | sudo chpasswd
+    echo "smithj:smithj" | sudo chpasswd
 
     rm -r ${SUBMITTY_DATA_DIR}/autograding_logs
     rm -r ${SUBMITTY_REPOSITORY}/.vagrant/autograding_logs
@@ -574,10 +583,9 @@ if [[ ${VAGRANT} == 1 ]]; then
     mkdir ${SUBMITTY_REPOSITORY}/.vagrant/tagrading_logs
     ln -s ${SUBMITTY_REPOSITORY}/.vagrant/tagrading_logs ${SUBMITTY_DATA_DIR}/tagrading_logs
 
-
     # Call helper script that makes the courses and refreshes the database
-    chmod u+x ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.sh
-    ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.sh
+    chmod u+x ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.py
+    ${SUBMITTY_REPOSITORY}/.setup/add_sample_courses.py
 
     #################################################################
     # SET CSV FIELDS (for classlist upload data)

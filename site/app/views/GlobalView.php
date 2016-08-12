@@ -115,24 +115,27 @@ HTML;
 <div id="header">
     <a href="http://submitty.org">
     <div id="logo-text">
+          <img height=80 width=230 src="http://submitty.org/images/submitty_logo.png">
+<!--
         <h1>Submitty</h1>
         <h2>Rensselaer Center for Open Source</h2>
+-->
     </div>
     </a>
     <div id="header-text">
         <h2>
 HTML;
         if ($this->core->userLoaded()) {
-            $logout_link = $this->core->buildUrl(array('component' => 'login', 'page' => 'logout'));
+            $logout_link = $this->core->buildUrl(array('component' => 'authentication', 'page' => 'logout'));
             $first_name = $this->core->getUser()->getFirstName();
             $id = $this->core->getUser()->getId();
             $return .= <<<HTML
-            Hello {$first_name} ({$id}) (<a id='logout' href='{$logout_link}'>Logout</a>)
+            <span id="login">Hello {$first_name} (<span id="login-id">{$id}</span>)</span> (<a id='logout' href='{$logout_link}'>Logout</a>)
 HTML;
         }
         else {
             $return .= <<<HTML
-            Hello Guest
+            <span id="login-guest">Hello Guest</span>
 HTML;
         }
         $return .= <<<HTML

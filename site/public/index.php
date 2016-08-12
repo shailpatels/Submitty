@@ -55,10 +55,10 @@ set_error_handler("error_handler", E_ERROR);
  */
 if (!isset($_REQUEST['semester'])) {
     // @todo: should check for a default semester if one is not specified, opposed to throwing an exception
-    $core->getOutput()->showError("Need to specify a semester (ex: &semester=s16) in the URL");
+    $core->getOutput()->showError("Need to specify a semester in the URL");
 }
 if (!isset($_REQUEST['course'])) {
-    $core->getOutput()->showError("Need to specify a course (ex: &course=csci1100) in the URL");
+    $core->getOutput()->showError("Need to specify a course in the URL");
 }
 
 // Sanitize the inputted semester & course to prevent directory attacks
@@ -71,7 +71,7 @@ $course = basename($_REQUEST['course']);
  * paths for the Logger and ExceptionHandler
  */
 $core->loadConfig($semester, $course);
-$core->getOutput()->addBreadcrumb("<a href='{$core->getConfig()->getSiteUrl()}semester=f16'>F16</a>");
+$core->getOutput()->addBreadcrumb("F16");
 $core->getOutput()->addBreadcrumb("<a href='{$core->buildUrl()}'>{$core->getFullCourseName()}</a>");
 date_default_timezone_set($core->getConfig()->getTimezone());
 Logger::setLogPath($core->getConfig()->getLogPath());
