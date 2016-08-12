@@ -48,13 +48,21 @@ def cmd_exists(cmd):
 
 
 def remove_file(filename):
+    """
+    Given that a file exists and is a file, attempt to remove it from the filesystem
+    """
     if os.path.isfile(filename):
         os.remove(filename)
 
 
-if __name__ == '__main__':
+def reset_system():
+    """
+    Attempt to reset the system enough such that one could re-run install_system.sh again on a
+    vagrant machine and not worry about things potentially breaking due to duplicate
+    lines/users/etc. in configuration files
+    """
     # Remove the MOT.D
-    remove_file("/etc/motd");
+    remove_file("/etc/motd")
 
     # Scrub the hosts file
     hosts = ["192.168.56.101    test-submit test-submit.cs.rpi.edu",
@@ -79,7 +87,7 @@ if __name__ == '__main__':
                   "xargs -I \"@@\" dropdb -h localhost -U hsdbu \"@@\"")
         del os.environ['PGPASSWORD']
 
-        psql_version = subprocess.check_output("psql -V | egrep -o '[0-9]{1,}\.[0-9]{1,}'",
+        psql_version = subprocess.check_output("psql -V | egrep -o '[0-9]{1,}.[0-9]{1,}'",
                                                shell=True).strip()
         lines = ["hostssl    all    all    192.168.56.0/24    pam",
                  "host       all    all    192.168.56.0/24    pam",
@@ -108,7 +116,8 @@ if __name__ == '__main__':
     #remove_lines('/etc/apache2/apache2.conf', ["ServerName 10.0.2.15"])
 
     shutil.rmtree('/root/bin', True)
-    users = ["instructor", "ta", "developer", "student", "smithj", "hwphp", "hwcgi", "hwcron", "hsdbu"]
+    users = ["instructor", "ta", "developer", "student", "smithj", "hwphp", "hwcgi",
+             "hwcron", "hsdbu"]
 
     for user in users:
         try:
@@ -128,3 +137,6 @@ if __name__ == '__main__':
 
     for group in groups:
         os.system('groupdel ' + group)
+
+if __name__ == "__main__":
+    reset_system()
