@@ -177,11 +177,11 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
   std::stringstream sstr(GLOBAL_config_json_string);
   sstr >> config_json;
 
-  std::string grade_path = ".submit.grade";
+  std::string grade_path = "results_grade.txt";
   std::ofstream gradefile(grade_path.c_str());
 
-  gradefile << "Grade for: " << rcsid << std::endl;
-  gradefile << "  submission#: " << subnum << std::endl;
+  //  gradefile << "Grade for: " << rcsid << std::endl;
+  //gradefile << "  submission#: " << subnum << std::endl;
   int penalty = -std::min(SUBMISSION_PENALTY,int(std::ceil(std::max(0,subnum-MAX_NUM_SUBMISSIONS)/10.0)));
   assert (penalty >= -SUBMISSION_PENALTY && penalty <= 0);
   if (penalty != 0) {
@@ -282,10 +282,11 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
     //  tc_j["messages"].push_back(message);
     //}
     all_testcases.push_back(tc_j); 
-    gradefile << "  Test " << std::setw(2) << std::right << i+1 << ":" 
-        << std::setw(30) << std::left << my_testcase.getTitle() << " " 
-        << std::setw(2) << std::right << testcase_pts << " / " 
-        << std::setw(2) << std::right << my_testcase.getPoints() << std::endl;
+    gradefile << "Testcase"
+              << std::setw(3) << std::right << i+1 << ": "
+              << std::setw(50) << std::left << my_testcase.getTitle() << " "
+              << std::setw(3) << std::right << testcase_pts << " /"
+              << std::setw(3) << std::right << my_testcase.getPoints() << std::endl;
 
   } // end test case loop
 
@@ -313,31 +314,21 @@ int validateTestCases(const std::string &hw_id, const std::string &rcsid, int su
 
   assert (total_possible_pts == TOTAL_POINTS);
 
-  /* Generate submission.json */
+  /* Generate results.json */
   nlohmann::json sj;
-  sj["submission_number"] = subnum;
-  sj["points_awarded"] = hidden_auto_pts;
-  sj["nonhidden_points_awarded"] = nonhidden_auto_pts;
-  sj["extra_credit_points_awarded"] = hidden_extra_credit;
-  sj["non_extra_credit_points_awarded"] = hidden_auto_pts - hidden_extra_credit;
-  sj["submission_time"] = subtime;
   sj["testcases"] = all_testcases;
 
 
-  std::ofstream json_file("submission.json");
+  std::ofstream json_file("results.json");
   json_file << sj.dump(4);
 
 
   json_file.close();
 
-  gradefile << "Automatic extra credit (w/o hidden):               " << "+ " << nonhidden_extra_credit << " points" << std::endl;
-  gradefile << "Automatic grading total (w/o hidden):              " << nonhidden_auto_pts << " / " << nonhidden_possible_pts << std::endl;
-  gradefile << "Max possible hidden automatic grading points:      " << hidden_possible_pts - nonhidden_possible_pts << std::endl;
-  gradefile << "Automatic extra credit:                            " << "+ " << hidden_extra_credit << " points" << std::endl;
-  gradefile << "Automatic grading total:                           " << hidden_auto_pts << " / " << hidden_possible_pts << std::endl;
-  gradefile << "Remaining points to be graded by TA:               " << possible_ta_pts << std::endl;
-  gradefile << "Max points for assignment (excluding extra credit):" << total_possible_pts << std::endl;
-
+  gradefile << std::setw(64) << std::left << "Automatic grading total:"
+            << std::setw(3) << std::right << hidden_auto_pts
+            << " /" <<  std::setw(3)
+            << std::right << hidden_possible_pts << std::endl;
 
   return 0;
 }

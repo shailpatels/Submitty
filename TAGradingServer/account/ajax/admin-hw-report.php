@@ -26,7 +26,7 @@ $params = array();
 
 function autogradingTotalAwarded($g_id, $student_id, $active_version){
     $total = 0;
-    $results_file = __SUBMISSION_SERVER__."/results/".$g_id."/".$student_id."/".$active_version."/submission.json";
+    $results_file = __SUBMISSION_SERVER__."/results/".$g_id."/".$student_id."/".$active_version."/results.json";
     if (file_exists($results_file)) {
         $results_file_contents = file_get_contents($results_file);
         $results = json_decode($results_file_contents, true);
@@ -191,7 +191,7 @@ foreach($db->rows() as $student_record) {
             $question_max_scores = pgArrayToPhp($gradeable['max_scores']);
             $question_total = 0; 
 
-            $submit_file = __SUBMISSION_SERVER__."/results/".$gradeable['g_id']."/".$student_id."/".$gradeable['gd_active_version']."/.submit.grade";
+            $submit_file = __SUBMISSION_SERVER__."/results/".$gradeable['g_id']."/".$student_id."/".$gradeable['gd_active_version']."/results_grade.txt";
             if (!file_exists($submit_file)) {
                 $student_output_text .= $nl.$nl."NO AUTO-GRADE RECORD FOUND (contact the instructor if you did submit this assignment)".$nl.$nl;
             }

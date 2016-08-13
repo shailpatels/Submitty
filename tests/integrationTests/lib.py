@@ -13,6 +13,9 @@ import traceback
 import sys
 from pprint import pprint
 
+if sys.version_info[0] == 3:
+    xrange = range
+
 # global variable available to be used by the test suite modules
 SUBMITTY_INSTALL_DIR = "__INSTALL__FILLIN__SUBMITTY_INSTALL_DIR__"
 
@@ -54,6 +57,7 @@ class TestcaseFile(object):
     def __init__(self):
         self.prebuild = lambda: None
         self.testcases = []
+        self.testcases_names = []
 
 TO_RUN = defaultdict(lambda: TestcaseFile())  # pylint: disable=unnecessary-lambda
 
@@ -92,8 +96,10 @@ WHITE = ASCIIEscapeManager([37])
 # Run the given list of test case names
 def run_tests(names):
     totalmodules = len(names)
-    for key in names:
-        val = TO_RUN[key]
+    for name in names:
+        name = name.split(".")
+        key = name[0]
+        val = to_run[key]
         modsuccess = True
         with BOLD:
             print("--- BEGIN TEST MODULE " + key.upper() + " ---")
@@ -108,29 +114,34 @@ def run_tests(names):
             modsuccess = False
             cont = False
         if cont:
-            total = len(val.testcases)
-            for index, func in zip(range(1, total + 1), val.testcases):
+            testcases = []
+            if len(name) > 1:
+                for i in range(len(val.testcases)):
+                    if str(val.testcases_names[i]).lower() == name[1].lower():
+                        testcases.append(val.testcases[i])
+            else:
+                testcases = val.testcases
+            total = len(testcases)
+            for index, func in zip(xrange(1, total + 1), testcases):
                 try:
                     func()
                 except Exception as exception:
                     with BOLD + RED:
                         lineno = None
-                        trace = traceback.extract_tb(sys.exc_info()[2])
-                        # Go through the trace to find exactly when __init__.py threw an exception
-                        # as that would be coming from the running test module
-                        for i in range(len(trace)-1, -1, -1):
-                            if os.path.basename(trace[i][0]) == '__init__.py':
-                                lineno = trace[i][1]
+                        tb = traceback.extract_tb(sys.exc_info()[2])
+                        for i in range(len(tb)-1, -1, -1):
+                            if os.path.basename(tb[i][0]) == '__init__.py':
+                                lineno = tb[i][1]
                         print("Testcase " + str(index) + " failed on line " + str(lineno) +
-                              " with exception: ", exception)
+                              " with exception: ", e)
                         sys.exc_info()
                         total -= 1
-            if total == len(val.testcases):
+            if total == len(testcases):
                 with BOLD + GREEN:
                     print("All testcases passed")
             else:
                 with BOLD + RED:
-                    print(str(total) + "/" + str(len(val.testcases)) + " testcases passed")
+                    print(str(total) + "/" + str(len(testcases)) + " testcases passed")
                     modsuccess = False
         with BOLD:
             print("--- END TEST MODULE " + key.upper() + " ---")
@@ -240,7 +251,7 @@ class TestcaseWrapper:
     # running test.diff("foo.txt") within the test package "test_foo", the files
     # /var/local/autograde_tests/tests/test_foo/data/foo.txt and
     # /var/local/autograde_tests/tests/test_foo/validation/foo.txt will be compared.
-    def diff(self, file1, file2=""):
+    def diff(self, file1, file2="", arg=""):
         # if only 1 filename provided...
         if not file2:
             file2 = file1
@@ -258,14 +269,19 @@ class TestcaseWrapper:
         if not os.path.isfile(filename2):
             raise RuntimeError("File " + filename2 + " does not exist")
 
-        # return_code = subprocess.call(["diff", "-b", filename1, filename2]) #ignores changes in
-        # white space
-        process = subprocess.Popen(["diff", filename1, filename2], stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-        out, _ = process.communicate()
+        if arg == "":
+            process = subprocess.Popen(["diff", filename1, filename2], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        elif arg == "-b":
+            # ignore changes in white space
+            process = subprocess.Popen(["diff", arg, filename1, filename2], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        else:
+            raise RuntimeError("ARGUMENT "+arg+" TO DIFF NOT TESTED")
+        out, err = process.communicate()
+
         if process.returncode == 1:
             raise RuntimeError("Difference between " + filename1 + " and " + filename2 +
-            " exited with exit code " + str(process.returncode) + '\n\nDiff:\n' + out)
+                               " exited with exit code " + str(process.returncode) +
+                               "\n\nDiff:\n" + str(out))
 
     # Loads 2 files, truncates them after specified number of lines,
     # and then checks to see if they match
@@ -497,8 +513,8 @@ def testcase(func):
             # blank raise raises the last exception as is
             raise
 
-    # pylint: disable=global-variable-not-assigned
-    global TO_RUN
-    TO_RUN[modname].wrapper = test_wrapper
-    TO_RUN[modname].testcases.append(wrapper)
+    global to_run
+    to_run[modname].wrapper = test_wrapper
+    to_run[modname].testcases.append(wrapper)
+    to_run[modname].testcases_names.append(func.__name__)
     return wrapper
