@@ -6,13 +6,13 @@ const std::string GradeColor(const std::string &grade);
 // =============================================================================================
 // CONSTRUCTOR
 
-Student::Student() { 
+Student::Student() {
 
   // personal data
   // (defaults to empty string)
 
   // registration status
-  section = 0;  
+  section = 0;
   audit = false;
   withdraw = false;
   independentstudy = false;
@@ -21,7 +21,7 @@ Student::Student() {
   current_allowed_late_days = 0;
 
   // grade data
-  for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) { 
+  for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) {
     GRADEABLE_ENUM g = ALL_GRADEABLES[i];
     all_item_grades[g]   = std::vector<ItemGrade>(GRADEABLES[g].getCount(),ItemGrade(0));
   }
@@ -68,7 +68,7 @@ const ItemGrade& Student::getGradeableItemGrade(GRADEABLE_ENUM g, int i) const {
   std::map<GRADEABLE_ENUM,std::vector<ItemGrade> >::const_iterator itr = all_item_grades.find(g);
   assert (itr != all_item_grades.end());
   assert (int(itr->second.size()) > i);
-  
+
   /*
 
     FIXME:  Where should this logic be re-located?
@@ -88,12 +88,12 @@ const ItemGrade& Student::getGradeableItemGrade(GRADEABLE_ENUM g, int i) const {
   }
   */
 
-  return itr->second[i]; //return value; 
+  return itr->second[i]; //return value;
 }
 
 
 
-void Student::setGradeableItemGrade(GRADEABLE_ENUM g, int i, float value, 
+void Student::setGradeableItemGrade(GRADEABLE_ENUM g, int i, float value,
                                     int late_days_used, const std::string &note) {
   assert (i >= 0 && i < GRADEABLES[g].getCount());
   std::map<GRADEABLE_ENUM,std::vector<ItemGrade> >::iterator itr = all_item_grades.find(g);
@@ -258,17 +258,17 @@ float Student::lowest_test_counts_half_pct() const {
   }
   std::sort(scores.begin(),scores.end());
 
-  // then sum the scores 
+  // then sum the scores
   float sum = 0.5 * scores[0];
   float weight_total = 0.5;
   for (int i = 1; i < num_tests; i++) {
     sum += scores[i];
     weight_total += 1.0;
   }
-  
+
   // renormalize!
   sum *= float(num_tests) / weight_total;
-  
+
   // scale to percent;
   return 100 * GRADEABLES[GRADEABLE_ENUM::TEST].getPercent() * sum / float (GRADEABLES[GRADEABLE_ENUM::TEST].getMaximum());
 }
@@ -279,18 +279,18 @@ float Student::lowest_test_counts_half_pct() const {
 
 int Student::getAllowedLateDays(int which_lecture) const {
   if (getSection() == 0) return 0;
-  
+
   //int answer = 2;
 
   int answer = default_allowed_late_days;
-  
+
   // average 4 questions per lecture 2-28 ~= 112 clicker questions
   //   30 questions => 3 late days
   //   60 questions => 4 late days
   //   90 qustions  => 5 late days
-  
+
   float total = getIClickerTotal(which_lecture,0);
-  
+
   for (unsigned int i = 0; i < GLOBAL_earned_late_days.size(); i++) {
     if (total >= GLOBAL_earned_late_days[i]) {
       answer++;
@@ -302,7 +302,7 @@ int Student::getAllowedLateDays(int which_lecture) const {
       answer++;
     }
   }
-  
+
   return std::max(current_allowed_late_days,answer);
 
 }
@@ -322,7 +322,7 @@ int Student::getUsedLateDays() const {
 
 float Student::overall_b4_moss() const {
   float answer = 0;
-  for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) { 
+  for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) {
     GRADEABLE_ENUM g = ALL_GRADEABLES[i];
     answer += GradeablePercent(g);
   }
@@ -332,11 +332,11 @@ float Student::overall_b4_moss() const {
 std::string Student::grade(bool flag_b4_moss, Student *lowest_d) const {
 
   if (section == 0) return "";
-  if (section == 11) return "";  // fake section
-  if (section == 12) return "";  // fake section
+  //if (section == 11) return "";  // fake section
+  //if (section == 12) return "";  // fake section
 
   if (!flag_b4_moss && manual_grade != "") return manual_grade;
-  
+
   float over = overall();
   if (flag_b4_moss) {
     over = overall_b4_moss();
@@ -349,7 +349,7 @@ std::string Student::grade(bool flag_b4_moss, Student *lowest_d) const {
   int failed_hw    = (GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  < 0.95 * lowest_d->GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  ) ? true : false;
   int failed_testA = (GradeablePercent(GRADEABLE_ENUM::TEST)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST)      ) ? true : false;
   int failed_testB = (GradeablePercent(GRADEABLE_ENUM::EXAM)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM)      ) ? true : false;
-  int failed_testC = (GradeablePercent(GRADEABLE_ENUM::TEST) + GradeablePercent(GRADEABLE_ENUM::EXAM) < 
+  int failed_testC = (GradeablePercent(GRADEABLE_ENUM::TEST) + GradeablePercent(GRADEABLE_ENUM::EXAM) <
                       0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST) + lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM) ) ? true : false;
   if (failed_lab || failed_hw ||
       ( failed_testA +
@@ -357,7 +357,7 @@ std::string Student::grade(bool flag_b4_moss, Student *lowest_d) const {
         failed_testC ) > 1) {
     return "F";
   }
-  
+
 
   // otherwise apply the cutoffs
   if (over >= CUTOFFS["A"])  return "A";
@@ -377,17 +377,27 @@ std::string Student::grade(bool flag_b4_moss, Student *lowest_d) const {
 
 
 
-void Student::mossify(int hw, float penalty) {
+void Student::mossify(int hw, float penalty, int deduction) {
 
   // if the penalty is "a whole or partial letter grade"....
-  float average_letter_grade = (CUTOFFS["A"]-CUTOFFS["B"] +
-                                 CUTOFFS["B"]-CUTOFFS["C"] +
-                                 CUTOFFS["C"]-CUTOFFS["D"]) / 3.0;
+  float average_letter_grade = (CUTOFFS["A-"]-CUTOFFS["B-"] +
+                                 CUTOFFS["B-"]-CUTOFFS["C-"] +
+                                 CUTOFFS["C-"]-CUTOFFS["D"]) / 3.0;
 
-  if (!(getGradeableItemGrade(GRADEABLE_ENUM::HOMEWORK,hw-1).getValue() > 0)) {
+  int current_grade = getGradeableItemGrade(GRADEABLE_ENUM::HOMEWORK,hw-1).getValue();
+  if (!(current_grade > 0)) {
     std::cerr << "WARNING:  the grade for this homework is already 0, moss penalty error?" << std::endl;
   }
-  setGradeableItemGrade(GRADEABLE_ENUM::HOMEWORK,hw-1,0);
+
+  current_grade -= deduction;
+
+  if(current_grade < 0)
+  {
+    current_grade = 0;
+  }
+
+  // setGradeableItemGrade(GRADEABLE_ENUM::HOMEWORK,hw-1,0);
+  setGradeableItemGrade(GRADEABLE_ENUM::HOMEWORK,hw-1,current_grade);
 
   // the penalty is positive
   // but it will be multiplied by a negative and added to the total;
@@ -420,7 +430,7 @@ void Student::ManualGrade(const std::string &grade, const std::string &message) 
 
 void Student::outputgrade(std::ostream &ostr,bool flag_b4_moss,Student *lowest_d) const {
   std::string g = grade(flag_b4_moss,lowest_d);
-  
+
   std::string color = GradeColor(g);
   if (moss_penalty < -0.01) {
     ostr << "<td align=center bgcolor=" << color << ">" << g << " @</td>";
@@ -435,7 +445,7 @@ void Student::outputgrade(std::ostream &ostr,bool flag_b4_moss,Student *lowest_d
 // zones for exams...
 //const std::string& Student::getZone(int i) const {
 std::string Student::getZone(int i) const {
-  assert (i >= 0 && i < GRADEABLES[GRADEABLE_ENUM::TEST].getCount()); return zones[i]; 
+  assert (i >= 0 && i < GRADEABLES[GRADEABLE_ENUM::TEST].getCount()); return zones[i];
 }
 
 
@@ -452,7 +462,7 @@ bool iclickertotalhelper(const std::string &clickername,int which_lecture) {
 }
 
 
-void Student::addIClickerAnswer(const std::string& which_question, char which_answer, iclicker_answer_enum grade) { 
+void Student::addIClickerAnswer(const std::string& which_question, char which_answer, iclicker_answer_enum grade) {
   iclickeranswers[which_question] = std::make_pair(which_answer,grade);  }
 
 float Student::getIClickerRecent() const {
@@ -461,7 +471,7 @@ float Student::getIClickerRecent() const {
 }
 
 float Student::getIClickerTotal(int which_lecture, int start) const {
-  if (getUserName() == "PERFECT") { return MAX_ICLICKER_TOTAL; } 
+  if (getUserName() == "PERFECT") { return MAX_ICLICKER_TOTAL; }
   float ans = 0;
   for (unsigned int i = start; i < ICLICKER_QUESTION_NAMES.size(); i++) {
     std::map<std::string,std::pair<char,iclicker_answer_enum> >::const_iterator itr = iclickeranswers.find(ICLICKER_QUESTION_NAMES[i]);
@@ -479,9 +489,9 @@ float Student::getIClickerTotal(int which_lecture, int start) const {
 
 std::pair<std::string,iclicker_answer_enum> Student::getIClickerAnswer(const std::string& which_question) const {
   std::pair<std::string,iclicker_answer_enum> noanswer = std::make_pair("",ICLICKER_NOANSWER);
-  std::map<std::string,std::pair<char,iclicker_answer_enum> >::const_iterator itr = iclickeranswers.find(which_question); 
+  std::map<std::string,std::pair<char,iclicker_answer_enum> >::const_iterator itr = iclickeranswers.find(which_question);
   if (itr == iclickeranswers.end()) return noanswer;
-  
+
   char x = itr->second.first;
   std::string tmp(1,x);
   iclicker_answer_enum val = itr->second.second;

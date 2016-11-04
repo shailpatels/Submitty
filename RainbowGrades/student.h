@@ -112,7 +112,7 @@ public:
   void setTestZone(int which_test, const std::string &zone)  { zones[which_test] = zone; }
   void setGradeableItemGrade(GRADEABLE_ENUM g, int i, float value, int late_days_used=0, const std::string &note="");
 
-  void mossify(int hw, float penalty);
+  void mossify(int hw, float penalty, int deduction);
 
   // other grade-like data
   void setRemoteID(const std::string& r_id) { remote_id = r_id; }
@@ -135,13 +135,13 @@ public:
 
   // ---------------
   // I-CLICKER
-  
+
   void addIClickerAnswer(const std::string& which_question, char which_answer, iclicker_answer_enum grade);
   float getIClickerRecent() const;
   float getIClickerTotalFromStart() const { return getIClickerTotal(100,0);  }
   float getIClickerTotal(int which_lecture, int start) const;
-  bool hasPriorityHelpStatus() const { 
-    return (getIClickerRecent() >= ICLICKER_PRIORITY * float (ICLICKER_RECENT));  
+  bool hasPriorityHelpStatus() const {
+    return (getIClickerRecent() >= ICLICKER_PRIORITY * float (ICLICKER_RECENT));
   }
   std::pair<std::string,iclicker_answer_enum>  getIClickerAnswer(const std::string& which_question) const;
 
@@ -156,7 +156,7 @@ public:
   float overall_b4_moss() const;
   std::string grade(bool flag_b4_moss, Student *lowest_d) const;
   void outputgrade(std::ostream &ostr,bool flag_b4_moss,Student *lowest_d) const;
-  
+
 private:
 
   // ---------------
@@ -182,7 +182,7 @@ private:
   // grade data
   std::map<GRADEABLE_ENUM,std::vector<ItemGrade> > all_item_grades;
   std::map<std::string,std::pair<char,iclicker_answer_enum> > iclickeranswers;
-  
+
   std::vector<std::string> zones;
   float moss_penalty;
   float cached_hw;
@@ -201,7 +201,7 @@ private:
   std::string exam_time;
   std::string exam_zone_image;
 
-  // per student notes 
+  // per student notes
   std::string ta_recommendation;
   std::string other_note;
   std::string manual_grade;

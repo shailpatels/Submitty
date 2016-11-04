@@ -38,7 +38,7 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
   std::map<std::string,ZoneInfo> zones;
   std::ifstream istr_zone_counts(zone_counts_filename.c_str());
   assert (istr_zone_counts.good());
-  
+
   int total_seats = 0;
   ZoneInfo zi;
 
@@ -51,12 +51,12 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
     ss >> zi.image_url;
 
     zi.count=0;
-    
+
     if (zones.find(zi.zone) != zones.end()) {
       std::cerr << "\nERROR: duplicate zone " << zi.zone << " in " << zone_counts_filename << std::endl;
       exit(0);
     }
-    
+
     assert (zi.max >= 0);
     total_seats += zi.max;
     zones.insert(std::make_pair(zi.zone,zi));
@@ -121,7 +121,7 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
 
   // FIXME: this belongs once, at start of program
   std::srand ( unsigned ( std::time(0) ) );
-  
+
   std::vector<std::string> randomized_available;
   for (std::map<std::string,ZoneInfo>::iterator itr = zones.begin();
        itr != zones.end(); itr++) {
@@ -166,7 +166,7 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
       zi.count++;
     }
   }
-  
+
   std::cout << "new zone assignments             " << new_zone_assign << std::endl;
   std::cout << "low overall grade (not assigning a zone) " << low_overall_grade << std::endl;
   std::cout << "not registered in valid section  " << not_reg << std::endl;
@@ -181,11 +181,11 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
 
     std::ofstream ostr_zone_assignments(zone_assignments_filename.c_str());
     assert (ostr_zone_assignments.good());
-    
+
     for (unsigned int i = 0; i < students.size(); i++) {
-      
+
       Student* &s = students[i];
-      
+
       if (s->getLastName() == "") continue;
 
       std::string f = s->getFirstName();
@@ -200,7 +200,7 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
       ostr_zone_assignments << std::setw(10) << std::left << s->getExamRoom()  << " ";
       ostr_zone_assignments << std::setw(10) << std::left << s->getExamZone()  << " ";
       ostr_zone_assignments << std::setw(10) << std::left << s->getExamTime();
-      
+
       ostr_zone_assignments << std::endl;
 
     }
@@ -215,9 +215,9 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
   for (std::map<std::string,ZoneInfo>::iterator itr = zones.begin();
        itr != zones.end(); itr++) {
 
-    std::cout << "ZONE " << std::left  << std::setw(4) << itr->first 
-              << " "     << std::left  << std::setw(10) << itr->second.building << "  " 
-              << " "     << std::left  << std::setw(4) << itr->second.room << "  " 
+    std::cout << "ZONE " << std::left  << std::setw(4) << itr->first
+              << " "     << std::left  << std::setw(10) << itr->second.building << "  "
+              << " "     << std::left  << std::setw(4) << itr->second.room << "  "
               << " "     << std::right << std::setw(4) << itr->second.count << std::endl;
 
     total_assignments += itr->second.count;
