@@ -1,4 +1,4 @@
-/usr/local/submitty/hwgrading_website/
+/usr/local/submitty/site/
 cgi-bin
 
 # The first two lines contain the suexec document root and the suexec userdir

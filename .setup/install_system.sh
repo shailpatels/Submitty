@@ -555,7 +555,7 @@ fi
 source ${SUBMITTY_INSTALL_DIR}/.setup/INSTALL_SUBMITTY.sh clean
 #source ${SUBMITTY_INSTALL_DIR}/.setup/INSTALL_SUBMITTY.sh clean test
 
-source ${SUBMITTY_REPOSITORY}/Docs/sample_bin/admin_scripts_setup
+source ${SUBMITTY_REPOSITORY}/sample_sysadmin/sample_bin/admin_scripts_setup
 cp ${SUBMITTY_REPOSITORY}/.setup/vagrant/hwgrading.conf /etc/apache2/sites-available/hwgrading.conf
 cp ${SUBMITTY_REPOSITORY}/.setup/vagrant/submitty.conf /etc/apache2/sites-available/submitty.conf
 cp ${SUBMITTY_REPOSITORY}/.setup/vagrant/cgi.conf /etc/apache2/sites-available/cgi.conf
