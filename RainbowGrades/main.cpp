@@ -54,6 +54,8 @@ bool  TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT = false;
 bool  LOWEST_TEST_COUNTS_HALF = false;
 
 bool QUIZ_NORMALIZE_AND_DROP_TWO = false;
+bool LECTURE_EXERCISE_NORMALIZE_AND_DROP_THREE = false;
+bool LAB_NORMALIZE = false;
 
 std::vector<std::string> ICLICKER_QUESTION_NAMES;
 float MAX_ICLICKER_TOTAL;
@@ -388,6 +390,10 @@ void preprocesscustomizationfile() {
         TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT = true;
       } else if (token == "quiz_normalize_and_drop_two") {
         QUIZ_NORMALIZE_AND_DROP_TWO = true;
+      } else if (token == "lecture_exercise_normalize_and_drop_three") {
+        LECTURE_EXERCISE_NORMALIZE_AND_DROP_THREE = true;
+      } else if (token == "lab_normalize") {
+        LAB_NORMALIZE = true;
       } else if (token == "lowest_test_counts_half") {
         LOWEST_TEST_COUNTS_HALF = true;
       } else {

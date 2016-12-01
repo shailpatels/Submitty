@@ -50,17 +50,17 @@ int UNHEX(std::string s) {
 
 // colors for grades
 const std::string GradeColor(const std::string &grade) {
-  if      (grade == "A" ) return HEX(200)+HEX(200)+HEX(255); 
-  else if (grade == "A-") return HEX(200)+HEX(235)+HEX(255); 
-  else if (grade == "B+") return HEX(219)+HEX(255)+HEX(200); 
-  else if (grade == "B" ) return HEX(237)+HEX(255)+HEX(200); 
-  else if (grade == "B-") return HEX(255)+HEX(255)+HEX(200); 
-  else if (grade == "C+") return HEX(255)+HEX(237)+HEX(200); 
-  else if (grade == "C" ) return HEX(255)+HEX(219)+HEX(200); 
-  else if (grade == "C-") return HEX(255)+HEX(200)+HEX(200); 
-  else if (grade == "D+") return HEX(255)+HEX(100)+HEX(100); 
-  else if (grade == "D" ) return HEX(255)+HEX(  0)+HEX(  0); 
-  else if (grade == "F" ) return HEX(200)+HEX(  0)+HEX(  0); 
+  if      (grade == "A" ) return HEX(200)+HEX(200)+HEX(255);
+  else if (grade == "A-") return HEX(200)+HEX(235)+HEX(255);
+  else if (grade == "B+") return HEX(219)+HEX(255)+HEX(200);
+  else if (grade == "B" ) return HEX(237)+HEX(255)+HEX(200);
+  else if (grade == "B-") return HEX(255)+HEX(255)+HEX(200);
+  else if (grade == "C+") return HEX(255)+HEX(237)+HEX(200);
+  else if (grade == "C" ) return HEX(255)+HEX(219)+HEX(200);
+  else if (grade == "C-") return HEX(255)+HEX(200)+HEX(200);
+  else if (grade == "D+") return HEX(255)+HEX(100)+HEX(100);
+  else if (grade == "D" ) return HEX(255)+HEX(  0)+HEX(  0);
+  else if (grade == "F" ) return HEX(200)+HEX(  0)+HEX(  0);
   else return "ffffff";
 }
 
@@ -85,14 +85,14 @@ int convertMajor(const std::string &major) {
   if (major == "COGS" || major == "PSYC") return 15;
   if (major == "ELEC") return 14;
   if (major == "PHYS" || major == "APHY") return 13;
-  if (major == "BMGT" || 
-      major == "ISCI" || 
-      major == "ENGR" || 
+  if (major == "BMGT" ||
+      major == "ISCI" ||
+      major == "ENGR" ||
       major == "USCI" ||
       major == "DSIS" ||
       major == "ECON" ||
       major == "EART" ||
-      major == "CHEG" || 
+      major == "CHEG" ||
       major == "MECL" ||
       major == "MGTE" ||
       major == "UNGS" ||
@@ -128,12 +128,17 @@ std::string coloritcolor(float val,
                          float b,
                          float c,
                          float d) {
-  
-  assert (perfect >= a &&
-          a >= b &&
-          b >= c &&
-          c >= d &&
-          d >= 0);
+
+  // assert (perfect >= a &&
+  //               a >= b &&
+  //               b >= c &&
+  //               c >= d &&
+  //               d >= 0);
+  if(! (perfect >= a &&
+           a >= b &&
+           b >= c &&
+           c >= d &&
+           d >= 0) ) return "ffffff";
 
   if (val < 0.00001) return "ffffff";
   else if (val > perfect) return GetBenchmarkColor("extracredit");
@@ -151,22 +156,22 @@ std::string coloritcolor(float val,
     alpha = (perfect-val)/float(perfect-a);
     c1 = perfect_color;
     c2 = a_color;
-  } 
+  }
   else if (val >= b) {
     alpha = (a-val)/float(a-b);
     c1 = a_color;
     c2 = b_color;
-  } 
+  }
   else if (val >= c) {
     alpha = (b-val)/float(b-c);
     c1 = b_color;
     c2 = c_color;
-  } 
+  }
   else if (val >= d) {
     alpha = (c-val)/float(c-d);
     c1 = c_color;
     c2 = d_color;
-  } 
+  }
   else {
     return GetBenchmarkColor("failing");
   }
@@ -219,7 +224,7 @@ void colorit_major(std::ostream &ostr, const std::string& s) {
   coloritcolor(ostr,m,19.5,17,15,11,10);
   ostr << ">" << s << "</td>";
 }
-   
+
 
 
 void colorit_section(std::ostream &ostr,
@@ -227,7 +232,7 @@ void colorit_section(std::ostream &ostr,
 
   std::string section_name;
 
-  if (validSection(section)) 
+  if (validSection(section))
     section_name = sectionNames[section];
   std::string section_color = sectionColors[section_name];
 
@@ -282,13 +287,13 @@ void colorit(std::ostream &ostr,
   ostr << ">";
   if (val < 0.0000001) {
     ostr << "&nbsp;";
-  } else if (precision == 1) {  
+  } else if (precision == 1) {
     ostr << std::dec << val << "&nbsp;" << bonus_text;
   } else {
     assert (precision == 0);
     ostr << std::dec << (int)val;
   }
-  ostr << "</td>"; 
+  ostr << "</td>";
 }
 
 // ==========================================================
@@ -297,7 +302,7 @@ void PrintExamRoomAndZoneTable(std::ofstream &ostr, Student *s) {
 
 
 #if 0
-    
+
   ostr << "<table border=1 cellpadding=5 cellspacing=0 style=\"background-color:#ddffdd; width:auto;\">\n";
   ostr << "<tr><td>\n";
   ostr << "<table border=0 cellpadding=5 cellspacing=0>\n";
@@ -312,15 +317,15 @@ void PrintExamRoomAndZoneTable(std::ofstream &ostr, Student *s) {
   int A = 54059; /* a prime */
   int B = 76963; /* another prime */
   int FIRSTH = 37; /* also prime */
-    
+
   unsigned int hw4_sum = FIRSTH;
   for (int i = 0; i < username.size(); i++) {
     hw4_sum = (hw4_sum * A) ^ (username[i] * B);
     s++;
   }
 
-  int hw4_section = (hw4_sum % 12)+1; 
-  
+  int hw4_section = (hw4_sum % 12)+1;
+
   std::string hw4_filename = "UNASSIGNED";
   if (hw4_section == 1)  hw4_filename = "";
   if (hw4_section == 2)  hw4_filename = "";
@@ -402,7 +407,7 @@ void PrintExamRoomAndZoneTable(std::ofstream &ostr, Student *s) {
   //  ostr << "  <tr><td>" << GLOBAL_EXAM_DATE << "</td><td align=center>" << time << "</td></tr>\n";
   //ostr << "  <tr><td>Your room assignment: </td><td align=center>" << room << "</td></tr>\n";
 
-  
+
 
 
   if (zone == "SEE INSTRUCTOR") {
@@ -508,7 +513,7 @@ void start_table_output( bool for_instructor,
                  const std::vector<Student*> &students, int rank, int month, int day, int year,
                         enum GRADEABLE_ENUM g,
                         Student *sp, Student *sa, Student *sb, Student *sc, Student *sd) {
-  
+
 
   std::vector<int> all_students;
   std::vector<int> select_students;
@@ -531,9 +536,9 @@ void start_table_output( bool for_instructor,
   table.set(0,counter++,TableCell("ffffff","LAST"));
   table.set(0,counter++,TableCell("ffffff","FIRST (LEGAL)"));
   table.set(0,counter++,TableCell("ffffff","FIRST"));
-  student_data.push_back(counter-4);  
-  student_data.push_back(counter-1);  
-  student_data.push_back(counter-3);  
+  student_data.push_back(counter-4);
+  student_data.push_back(counter-1);
+  student_data.push_back(counter-3);
   student_data.push_back(counter);  table.set(0,counter++,TableCell(grey_divider));
 
   if (DISPLAY_EXAM_SEATING) {
@@ -550,7 +555,7 @@ void start_table_output( bool for_instructor,
     std::cout << "DISPLAY FINAL GRADE" << std::endl;
     student_data.push_back(counter); table.set(0,counter++,TableCell("ffffff","FINAL GRADE"));
     student_data.push_back(counter); table.set(0,counter++,TableCell(grey_divider));
-  } 
+  }
 
   // ----------------------------
   // % OF OVERALL AVERAGE FOR EACH GRADEABLE
@@ -571,7 +576,7 @@ void start_table_output( bool for_instructor,
 
     for (int j = 0; j < GRADEABLES[g].getCount(); j++) {
       if (g != GRADEABLE_ENUM::NOTE) {
-        student_data.push_back(counter);  
+        student_data.push_back(counter);
       }
       std::string gradeable_id = GRADEABLES[g].getID(j);
       std::string gradeable_name = "";
@@ -581,17 +586,17 @@ void start_table_output( bool for_instructor,
       table.set(0,counter++,TableCell("ffffff",gradeable_name));
     }
     if (g != GRADEABLE_ENUM::NOTE) {
-      student_data.push_back(counter);  
+      student_data.push_back(counter);
     }
     table.set(0,counter++,TableCell(grey_divider));
 
     if (g == GRADEABLE_ENUM::TEST && TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
       for (int j = 0; j < GRADEABLES[g].getCount(); j++) {
-        student_data.push_back(counter);  
+        student_data.push_back(counter);
         std::string gradeable_id = GRADEABLES[g].getID(j);
         std::string gradeable_name = "";
         if (GRADEABLES[g].hasCorrespondence(gradeable_id)) {
-          gradeable_name = "Adjusted " + GRADEABLES[g].getCorrespondence(gradeable_id).second;
+          gradeable_name = "Curved " + GRADEABLES[g].getCorrespondence(gradeable_id).second;
         }
         table.set(0,counter++,TableCell("ffffff",gradeable_name));
       }
@@ -616,9 +621,9 @@ void start_table_output( bool for_instructor,
     student_data.push_back(counter);  table.set(0,counter++,TableCell("ffffff","ICLICKER TOTAL"));
     student_data.push_back(counter);  table.set(0,counter++,TableCell("ffffff","ICLICKER RECENT"));
     student_data.push_back(counter);  table.set(0,counter++,TableCell(grey_divider));
-    
+
     /*
-      ostr << "<td align=center bgcolor=888888>&nbsp;</td>" 
+      ostr << "<td align=center bgcolor=888888>&nbsp;</td>"
            << "<td align=center colspan=" << ICLICKER_QUESTION_NAMES.size() << ">ICLICKER QUESTIONS<br>CORRECT(green)=1.0, INCORRECT(red)=0.5, POLL(yellow)=1.0, NO ANSWER(white)=0.0<br>30.0 iClicker points = 3rd late day, 60.0 iClicker pts = 4th late day, 90.0 iClicker pts = 5th late day<br>&ge;8.0/12.0 most recent=Priority Help Queue (iClicker status highlighted in blue)</td>";
     */
 
@@ -672,7 +677,7 @@ void start_table_output( bool for_instructor,
         default_color= coloritcolor(2,5,4,3,2,1);
       } else if (this_student == sd) {
         default_color= coloritcolor(1,5,4,3,2,1);
-      } 
+      }
       table.set(myrow,counter++,TableCell(default_color,""));
     } else {
       //std::cout << " WHO? " << this_student->getUserName() << std::endl;
@@ -685,7 +690,7 @@ void start_table_output( bool for_instructor,
       myrank++;
     }
 
-    
+
     std::string section_color = default_color;
     std::string section_label = "";
     colorit_section2(this_student->getSection(),section_color,section_label);
@@ -777,9 +782,9 @@ void start_table_output( bool for_instructor,
       table.set(myrow,counter++,TableCell(color,grade,2));
     }
     table.set(myrow,counter++,TableCell(grey_divider));
-    
+
     // ----------------------------
-    // DETAILS OF EACH GRADEABLE    
+    // DETAILS OF EACH GRADEABLE
     for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) {
       GRADEABLE_ENUM g = ALL_GRADEABLES[i];
       enum CELL_CONTENTS_STATUS visible = CELL_CONTENTS_VISIBLE;
@@ -885,11 +890,11 @@ void start_table_output( bool for_instructor,
         std::string thing = answer.first;
         std::string color = "ffffff"; //default_color;
         if (answer.second == ICLICKER_CORRECT) {
-          color = "aaffaa"; 
+          color = "aaffaa";
         } else if (answer.second == ICLICKER_PARTICIPATED) {
-          color = "ffffaa"; 
+          color = "ffffaa";
         } else if (answer.second == ICLICKER_INCORRECT) {
-          color = "ffaaaa"; 
+          color = "ffaaaa";
         } else {
           assert (answer.second == ICLICKER_NOANSWER);
         }
@@ -900,7 +905,7 @@ void start_table_output( bool for_instructor,
   }
 
 
-  
+
   for (int i = 0; i < table.numCols(); i++) {
     instructor_data.push_back(i);
   }
@@ -917,14 +922,14 @@ void start_table_output( bool for_instructor,
 
   end_table(ostr2,true,NULL);
   ostr2.close();
-  
+
   std::stringstream ss;
   ss << ALL_STUDENTS_OUTPUT_DIRECTORY << "output_" << month << "_" << day << "_" << year << ".html";
-   
+
   std::string command = "cp -f output.html " + ss.str();
   std::cout << "RUN COMMAND " << command << std::endl;
   system(command.c_str());
-  
+
 
   for (std::map<int,std::string>::iterator itr = student_correspondences.begin();
        itr != student_correspondences.end(); itr++) {
@@ -968,27 +973,27 @@ void start_table_output( bool for_instructor,
   // -------------------------------------------------------------------------------
   // RANK & SECTION
   if (for_instructor) {
-    ostr << "<td align=center>#</td>";   
+    ostr << "<td align=center>#</td>";
   }
-  ostr << "<td align=center>SECTION</td>";   
-  
+  ostr << "<td align=center>SECTION</td>";
+
   // -------------------------------------------------------------------------------
   // INSTRUCTOR NOTES
-  
+
   if (for_instructor && DISPLAY_INSTRUCTOR_NOTES) {
-    //ostr << "<td align=center>part.</td>" 
+    //ostr << "<td align=center>part.</td>"
     //   << "<td align=center>under.</td>";
     ostr << "<td align=center>notes</td>";
   }
-  
-  
-  // -------------------------------------------------------------------------------  
+
+
+  // -------------------------------------------------------------------------------
   // NAME
   ostr << "<td align=center>USERNAME</td>";
-  ostr << "<td align=center>LAST</td>" 
+  ostr << "<td align=center>LAST</td>"
        << "<td align=center>FIRST</td>";
-  
-  // -------------------------------------------------------------------------------  
+
+  // -------------------------------------------------------------------------------
   // EXAM SEATING
   if (DISPLAY_EXAM_SEATING) {
     ostr << "<td align=center bgcolor=888888>&nbsp;</td>";
@@ -997,16 +1002,16 @@ void start_table_output( bool for_instructor,
     ostr << "<td align=center>exam time</td>";
   }
 
-  // -------------------------------------------------------------------------------  
+  // -------------------------------------------------------------------------------
   // ICLICKER REMOTE
   if (DISPLAY_ICLICKER && ICLICKER_QUESTION_NAMES.size() > 0) {
     ostr << "<td align=center>iclicker status</td>";
   }
 
-  // -------------------------------------------------------------------------------  
+  // -------------------------------------------------------------------------------
   // GRADE SUMMARY
   if (DISPLAY_GRADE_SUMMARY && (for_instructor || g == GRADEABLE_ENUM::NONE)) {
-    
+
     if (DISPLAY_FINAL_GRADE) {
       ostr << "<td align=center bgcolor=888888>&nbsp;</td>";
       ostr << "<td align=center>GRADE</td>";
@@ -1029,7 +1034,7 @@ void start_table_output( bool for_instructor,
 
 
 
-  // -------------------------------------------------------------------------------  
+  // -------------------------------------------------------------------------------
   // GRADE DETAILS
   if (DISPLAY_GRADE_DETAILS) {
     for (unsigned int i = 0; i < ALL_GRADEABLES.size(); i++) {
@@ -1037,9 +1042,9 @@ void start_table_output( bool for_instructor,
       if (!for_instructor && g != ALL_GRADEABLES[i]) {
         continue;
       }
-        
+
       GRADEABLE_ENUM g = ALL_GRADEABLES[i];
-      ostr << "<td align=center bgcolor=888888>&nbsp;</td>"          
+      ostr << "<td align=center bgcolor=888888>&nbsp;</td>"
            << "<td align=center colspan=" << GRADEABLES[g].getCount() << ">" <<  gradeable_to_string(g)<< "S";
       if (g == GRADEABLE_ENUM::HOMEWORK) {
         ostr << "<br>* = 1 late day used";
@@ -1047,13 +1052,13 @@ void start_table_output( bool for_instructor,
       ostr << "</td>";
       if (g == GRADEABLE_ENUM::TEST) {
         if (TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
-          ostr << "<td align=center bgcolor=888888>&nbsp;</td>" 
+          ostr << "<td align=center bgcolor=888888>&nbsp;</td>"
                << "<td align=center colspan=" << GRADEABLES[g].getCount() << ">ADJUSTED TESTS</td>";
         }
       }
     }
   }
-   
+
   if (DISPLAY_ICLICKER) {
     // ICLICKER DETAILS
     if (ICLICKER_QUESTION_NAMES.size() > 0) {
@@ -1064,14 +1069,14 @@ void start_table_output( bool for_instructor,
         ostr << "<td align=center>USED LATE DAYS</td>";
     }
     if (ICLICKER_QUESTION_NAMES.size() > 0) {
-        ostr << "<td align=center bgcolor=888888>&nbsp;</td>" 
+        ostr << "<td align=center bgcolor=888888>&nbsp;</td>"
              << "<td align=center colspan=" << ICLICKER_QUESTION_NAMES.size() << ">ICLICKER QUESTIONS<br>CORRECT(green)=1.0, INCORRECT(red)=0.5, POLL(yellow)=1.0, NO ANSWER(white)=0.0<br>25.0 iClicker points = 3rd late day, 50.0 iClicker pts = 4th late day, 75.0 iClicker pts = 5th late day<br>&ge;8.0/12.0 most recent=Priority Help Queue (iClicker status highlighted in blue)</td>";
     }
   }
 
-  // -------------------------------------------------------------------------------  
-  ostr << "</td></tr>\n";    
-  */  
+  // -------------------------------------------------------------------------------
+  ostr << "</td></tr>\n";
+  */
 }
 
 
@@ -1121,7 +1126,7 @@ void end_table(std::ofstream &ostr,  bool for_instructor, Student *s) {
   if (DISPLAY_FINAL_GRADE) { // && students.size() > 50) {
 
   int total_A = grade_counts[Grade("A")] + grade_counts[Grade("A-")];
-  int total_B = grade_counts[Grade("B+")] + grade_counts[Grade("B")] + grade_counts[Grade("B-")]; 
+  int total_B = grade_counts[Grade("B+")] + grade_counts[Grade("B")] + grade_counts[Grade("B-")];
   int total_C = grade_counts[Grade("C+")] + grade_counts[Grade("C")] + grade_counts[Grade("C-")];
   int total_D = grade_counts[Grade("D+")] + grade_counts[Grade("D")];
   int total_passed = total_A + total_B + total_C + total_D;
@@ -1152,14 +1157,14 @@ void end_table(std::ofstream &ostr,  bool for_instructor, Student *s) {
     ostr << "<td align=center align=center width=40>total</td>\n";
   }
   ostr << "</tr>\n";
-  
+
   ostr << "<tr>\n";
   ostr << "<td width=150># of students</td>";
   ostr << "<td align=center width=40>"<<grade_counts[Grade("A")]<<"</td><td align=center width=40>"<<grade_counts[Grade("A-")]<<"</td>";
   ostr << "<td align=center width=40>"<<grade_counts[Grade("B+")]<<"</td><td align=center width=40>"<<grade_counts[Grade("B")]<<"</td><td align=center width=40>"<<grade_counts[Grade("B-")]<<"</td>";
   ostr << "<td align=center width=40>"<<grade_counts[Grade("C+")]<<"</td><td align=center width=40>"<<grade_counts[Grade("C")]<<"</td><td align=center width=40>"<<grade_counts[Grade("C-")]<<"</td>";
   ostr << "<td align=center width=40>"<<grade_counts[Grade("D+")]<<"</td><td align=center width=40>"<<grade_counts[Grade("D")]<<"</td>\n";
-  
+
   if (for_instructor) {
     ostr << "<td align=center width=40>"<<grade_counts[Grade("F")]<<"</td>\n";
     //ostr << "<td align=center width=40>" << grade_counts[Grade("")]<<"</td>\n";
@@ -1170,9 +1175,9 @@ void end_table(std::ofstream &ostr,  bool for_instructor, Student *s) {
     ostr << "<td align=center width=40>"<<total<<"</td>\n";
   }
   ostr << "</tr>\n";
-  
-  
-  
+
+
+
   ostr << "<tr>\n";
   ostr << "<td width=150>average OVERALL<br>of students with<br>this FINAL GRADE</td>";
   ostr << "<td align=center width=40>"<<std::setprecision(1)<<std::fixed<<grade_avg[Grade("A")]<<"</td><td align=center width=40>"<<std::setprecision(1)<<std::fixed<<grade_avg[Grade("A-")]<<"</td>";
@@ -1195,9 +1200,9 @@ void end_table(std::ofstream &ostr,  bool for_instructor, Student *s) {
     ostr << "<td align=center width=40>&nbsp;</td>\n";
   }
   ostr << "</tr>\n";
-  
-  
-  
+
+
+
   ostr << "</table><p>\n";
 
   }

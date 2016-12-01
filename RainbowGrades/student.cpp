@@ -1,4 +1,5 @@
 #include "student.h"
+#include <cmath>
 
 const std::string GradeColor(const std::string &grade);
 
@@ -115,13 +116,23 @@ float Student::GradeablePercent(GRADEABLE_ENUM g) const {
   assert (GRADEABLES[g].getPercent() >= 0);
 
   // special rules for tests
-  if (g == GRADEABLE_ENUM::TEST && TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
-    return adjusted_test_pct();
-  }
+  // if (g == GRADEABLE_ENUM::TEST && TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
+  //   return adjusted_test_pct();
+  // }
 
   // normalize & drop lowest 2
   if (g == GRADEABLE_ENUM::QUIZ && QUIZ_NORMALIZE_AND_DROP_TWO) {
     return quiz_normalize_and_drop_two();
+  }
+
+  // normalize & drop lowest 2
+  if (g == GRADEABLE_ENUM::LECTURE_EXERCISE && LECTURE_EXERCISE_NORMALIZE_AND_DROP_THREE) {
+    return lecture_exercise_normalize_and_drop_three();
+  }
+
+  // normalize
+  if (g == GRADEABLE_ENUM::LAB && LAB_NORMALIZE) {
+    return lab_normalize();
   }
 
   if (g == GRADEABLE_ENUM::TEST && LOWEST_TEST_COUNTS_HALF) {
@@ -192,18 +203,40 @@ float Student::GradeablePercent(GRADEABLE_ENUM g) const {
 float Student::adjusted_test(int i) const {
   assert (i >= 0 && i <  GRADEABLES[GRADEABLE_ENUM::TEST].getCount());
   float a = getGradeableItemGrade(GRADEABLE_ENUM::TEST,i).getValue();
-  float b;
-  if (i+1 < GRADEABLES[GRADEABLE_ENUM::TEST].getCount()) {
-    b = getGradeableItemGrade(GRADEABLE_ENUM::TEST,i+1).getValue();
-  } else {
-    assert (GRADEABLES[GRADEABLE_ENUM::EXAM].getCount() == 1);
-    b = getGradeableItemGrade(GRADEABLE_ENUM::EXAM,0).getValue();
-    // HACK  need to scale the final exam!
-    b *= 0.6667;
+  // float b;
+  // if (i+1 < GRADEABLES[GRADEABLE_ENUM::TEST].getCount()) {
+  //   b = getGradeableItemGrade(GRADEABLE_ENUM::TEST,i+1).getValue();
+  // } else {
+  //   assert (GRADEABLES[GRADEABLE_ENUM::EXAM].getCount() == 1);
+  //   b = getGradeableItemGrade(GRADEABLE_ENUM::EXAM,0).getValue();
+  //   // HACK  need to scale the final exam!
+  //   b *= 0.6667;
+  // }
+
+  // if (a > b) return a;
+  // return (a+b) * 0.5;
+  int x0, x1, y0, y1;
+  x1 = 0;
+
+  if(i == 1)
+  {
+    x0 = 72;
+    x1 = 90;
+    y0 = 75;
+    y1 = 90;
+  }
+  else if(i == 2)
+  {
+    x0 = 0;
+    x1 = 60;
+    y0 = 20;
+    y1 = 60;
   }
 
-  if (a > b) return a;
-  return (a+b) * 0.5;
+  if(a == 0 or a >= x1)
+      return a;
+  else
+      return (a-x0) / float(x1-x0) * (y1-y0) + y0;
 }
 
 
@@ -246,6 +279,71 @@ float Student::quiz_normalize_and_drop_two() const {
 }
 
 
+
+float Student::lecture_exercise_normalize_and_drop_three() const {
+
+  // collect the normalized quiz scores in a vector
+  std::vector<float> scores;
+  for (int i = 0; i < GRADEABLES[GRADEABLE_ENUM::LECTURE_EXERCISE].getCount(); i++) {
+    // the max for this quiz
+    float p = PERFECT_STUDENT_POINTER->getGradeableItemGrade(GRADEABLE_ENUM::LECTURE_EXERCISE,i).getValue();
+    // this students score
+    float v = getGradeableItemGrade(GRADEABLE_ENUM::LECTURE_EXERCISE,i).getValue();
+    if(p == 0.0) {
+      scores.push_back(0.0);
+    }
+    else {
+      scores.push_back(v/p);
+    }
+  }
+
+  assert (scores.size() > 3);
+
+  // sort the scores
+  sort(scores.begin(),scores.end());
+
+  // sum up all but the lowest 3 scores
+  float sum = 0;
+  for (int i = 3; i < scores.size(); i++) {
+    sum += scores[i];
+  }
+
+  // the overall percent of the final grade for quizzes
+  return 100 * GRADEABLES[GRADEABLE_ENUM::LECTURE_EXERCISE].getPercent() * sum / float (scores.size()-3);
+}
+
+float Student::lab_normalize() const {
+
+  // collect the normalized quiz scores in a vector
+  std::vector<float> scores;
+  for (int i = 0; i < GRADEABLES[GRADEABLE_ENUM::LAB].getCount(); i++) {
+    // the max for this quiz
+    float p = PERFECT_STUDENT_POINTER->getGradeableItemGrade(GRADEABLE_ENUM::LAB,i).getValue();
+    // this students score
+    float v = getGradeableItemGrade(GRADEABLE_ENUM::LAB,i).getValue();
+    if(p == 0.0) {
+      scores.push_back(0.0);
+    }
+    else {
+      scores.push_back(v/p);
+    }
+  }
+
+  // sort the scores
+  sort(scores.begin(),scores.end());
+
+  // sum up all
+  float sum = 0;
+  for (int i = 0; i < scores.size(); i++) {
+    sum += scores[i];
+  }
+
+  // the overall percent of the final grade for quizzes
+
+  return 100 * GRADEABLES[GRADEABLE_ENUM::LAB].getPercent() * sum / float (scores.size() - 0);
+}
+
+
 float Student::lowest_test_counts_half_pct() const {
 
   int num_tests = GRADEABLES[GRADEABLE_ENUM::TEST].getCount();
@@ -253,8 +351,13 @@ float Student::lowest_test_counts_half_pct() const {
 
   // first, collect & sort the scores
   std::vector<float> scores;
+  float score;
   for (int i = 0; i < num_tests; i++) {
-    scores.push_back(getGradeableItemGrade(GRADEABLE_ENUM::TEST,i).getValue());
+    if(TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT)
+      score = adjusted_test(i);
+    else
+      score = getGradeableItemGrade(GRADEABLE_ENUM::TEST,i).getValue();
+    scores.push_back(score);
   }
   std::sort(scores.begin(),scores.end());
 

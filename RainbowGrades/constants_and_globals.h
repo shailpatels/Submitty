@@ -38,6 +38,8 @@ extern float LATE_DAY_PERCENTAGE_PENALTY;
 extern bool  LOWEST_TEST_COUNTS_HALF;
 
 extern bool QUIZ_NORMALIZE_AND_DROP_TWO;
+extern bool LECTURE_EXERCISE_NORMALIZE_AND_DROP_THREE;
+extern bool LAB_NORMALIZE;
 
 // ==========================================================
 extern std::map<int,std::string> sectionNames;
@@ -60,7 +62,7 @@ extern float MAX_ICLICKER_TOTAL;
 
 
 // ==========================================================
-// PROTOTYPES 
+// PROTOTYPES
 
 bool validSection(int section);
 
