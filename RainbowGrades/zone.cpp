@@ -126,8 +126,12 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
   for (std::map<std::string,ZoneInfo>::iterator itr = zones.begin();
        itr != zones.end(); itr++) {
     assert (itr->second.count <= itr->second.max);
+    std::string zone = itr->second.zone;
     for (int i = itr->second.count; i < itr->second.max; i++) {
-      randomized_available.push_back(itr->first);
+      if(zone != "U")
+      {
+        randomized_available.push_back(itr->first);
+      }
     }
   }
   std::cout << "AVAILABLE SEATS " << randomized_available.size() << std::endl;
@@ -150,20 +154,31 @@ void LoadExamSeatingFile(const std::string &zone_counts_filename, const std::str
       already_zoned++;
     } else if (!validSection(s->getSection())) {
       not_reg++;
-    } else if (s->overall() < GLOBAL_MIN_OVERALL_FOR_ZONE_ASSIGNMENT) {
-      low_overall_grade++;
-    } else {
+    }  else {
+      bool low_grade = s->overall() < GLOBAL_MIN_OVERALL_FOR_ZONE_ASSIGNMENT;
+      if (low_grade) {
+        ZoneInfo &zi = zones.find("U")->second;
+        s->setExamRoom(zi.building+std::string(" ")+zi.room);
+        s->setExamZone(zi.zone);
+        zi.count++;
+
+        low_overall_grade++;
+      }
+      else {
+        ZoneInfo &zi = zones.find(randomized_available[next_za])->second;
+        s->setExamRoom(zi.building+std::string(" ")+zi.room);
+        s->setExamZone(zi.zone);
+        zi.count++;
+
+        next_za++;
+        new_zone_assign++;
+      }
+
       //      std::cout << "ERROR assigning zone for " << s->getUserName() << std::endl;
       if (next_za >= (int)randomized_available.size()) {
         std::cout << "OOPS!  we ran out of exam seating" << std::endl;
       }
       assert (next_za < (int)randomized_available.size());
-      ZoneInfo &zi = zones.find(randomized_available[next_za])->second;
-      s->setExamRoom(zi.building+std::string(" ")+zi.room);
-      s->setExamZone(zi.zone);
-      next_za++;
-      new_zone_assign++;
-      zi.count++;
     }
   }
 

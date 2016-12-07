@@ -209,6 +209,21 @@ bool by_section(const Student *s1, const Student *s2) {
     return by_name(s1,s2);
 }
 
+
+bool by_section_and_exam(const Student *s1, const Student *s2) {
+  if (s2->getIndependentStudy() == true && s1->getIndependentStudy() == false) return false;
+  if (s2->getIndependentStudy() == false && s1->getIndependentStudy() == true) return false;
+  if (s2->getSection() <= 0 && s1->getSection() <= 0) {
+    return by_test_and_exam(s1,s2);
+  }
+  if (s2->getSection() == 0) return true;
+  if (s1->getSection() == 0) return false;
+  if (s1->getSection() < s2->getSection()) return true;
+  if (s1->getSection() > s2->getSection()) return false;
+    return by_test_and_exam(s1,s2);
+}
+
+
 bool by_iclicker(const Student* s1, const Student* s2) {
   return (s1->getIClickerTotalFromStart() > s2->getIClickerTotalFromStart());
 }
@@ -1096,7 +1111,7 @@ void output_helper(std::vector<Student*> &students,  std::string &GLOBAL_sort_or
         !validSection(students[S]->getSection())) {
       rank = -1;
     } else {
-      if (GLOBAL_sort_order == std::string("by_section") &&
+      if ((GLOBAL_sort_order == std::string("by_section") || GLOBAL_sort_order == std::string("by_section_and_exam")) &&
           last_section != students[S]->getSection()) {
         last_section = students[S]->getSection();
         next_rank = rank = 1;
@@ -1245,6 +1260,8 @@ int main(int argc, char* argv[]) {
     std::sort(students.begin(),students.end(),by_name);
   } else if (GLOBAL_sort_order == std::string("by_section")) {
     std::sort(students.begin(),students.end(),by_section);
+  } else if (GLOBAL_sort_order == std::string("by_section_and_exam")) {
+    std::sort(students.begin(),students.end(),by_section_and_exam);
   } else if (GLOBAL_sort_order == std::string("by_zone")) {
 
     DISPLAY_INSTRUCTOR_NOTES = false;
@@ -1276,7 +1293,7 @@ int main(int argc, char* argv[]) {
     }
     else {
       std::cerr << "UNKNOWN SORT OPTION " << GLOBAL_sort_order << std::endl;
-      std::cerr << "  Usage: " << argv[0] << " [ by_overall | by_name | by_section | by_zone | by_iclicker | by_lab | by_exercise | by_reading | by_hw | by_test | by_exam | by_test_and_exam ]" << std::endl;
+      std::cerr << "  Usage: " << argv[0] << " [ by_overall | by_name | by_section | by_section_and_exam | by_zone | by_iclicker | by_lab | by_exercise | by_reading | by_hw | by_test | by_exam | by_test_and_exam ]" << std::endl;
       exit(1);
     }
   }

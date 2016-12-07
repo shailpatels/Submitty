@@ -87,6 +87,9 @@ name: compile
 section: compile
 	./process_grades.out by_section
 
+section_exam: compile
+	./process_grades.out by_section_and_exam
+
 lab: compile
 	./process_grades.out by_lab
 
