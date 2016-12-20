@@ -603,6 +603,20 @@ void start_table_output( bool for_instructor,
       student_data.push_back(counter);  table.set(0,counter++,TableCell(grey_divider));
     }
 
+
+    if (g == GRADEABLE_ENUM::EXAM && TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
+      for (int j = 0; j < GRADEABLES[g].getCount(); j++) {
+        student_data.push_back(counter);
+        std::string gradeable_id = GRADEABLES[g].getID(j);
+        std::string gradeable_name = "";
+        if (GRADEABLES[g].hasCorrespondence(gradeable_id)) {
+          gradeable_name = "Curved " + GRADEABLES[g].getCorrespondence(gradeable_id).second;
+        }
+        table.set(0,counter++,TableCell("ffffff",gradeable_name));
+      }
+      student_data.push_back(counter);  table.set(0,counter++,TableCell(grey_divider));
+    }
+
   }
 
 
@@ -752,7 +766,7 @@ void start_table_output( bool for_instructor,
                                      sc->overall(),
                                      sd->overall());
     if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
-    table.set(myrow,counter++,TableCell(color,grade,2));
+    table.set(myrow,counter++,TableCell(color,grade,4));
     table.set(myrow,counter++,TableCell(grey_divider));
 
 
@@ -819,6 +833,23 @@ void start_table_output( bool for_instructor,
                                            sb->adjusted_test(j),
                                            sc->adjusted_test(j),
                                            sd->adjusted_test(j));
+          if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
+          table.set(myrow,counter++,TableCell(color,grade,1,"",0,visible));
+        }
+        table.set(myrow,counter++,TableCell(grey_divider));
+      }
+
+
+      // FIXME
+      if (g == GRADEABLE_ENUM::EXAM && TEST_IMPROVEMENT_AVERAGING_ADJUSTMENT) {
+        for (int j = 0; j < GRADEABLES[g].getCount(); j++) {
+          float grade = this_student->adjusted_exam(j);
+          std::string color = coloritcolor(this_student->adjusted_exam(j),
+                                           sp->adjusted_exam(j),
+                                           sa->adjusted_exam(j),
+                                           sb->adjusted_exam(j),
+                                           sc->adjusted_exam(j),
+                                           sd->adjusted_exam(j));
           if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
           table.set(myrow,counter++,TableCell(color,grade,1,"",0,visible));
         }

@@ -150,7 +150,9 @@ public:
   float GradeablePercent(GRADEABLE_ENUM g) const;
   float overall() const { return overall_b4_moss() + moss_penalty; }
   float adjusted_test(int i) const;
+  float adjusted_exam(int i) const;
   float adjusted_test_pct() const;
+  float adjusted_exam_pct() const;
   float lowest_test_counts_half_pct() const;
   float quiz_normalize_and_drop_two() const;
   float lecture_exercise_normalize_and_drop_three() const;

@@ -139,6 +139,11 @@ float Student::GradeablePercent(GRADEABLE_ENUM g) const {
     return lowest_test_counts_half_pct();
   }
 
+    // special rules for tests
+  if (g == GRADEABLE_ENUM::EXAM) {
+    return adjusted_exam_pct();
+  }
+
 
   // ============================================================================
   // end special rule for projects for op sys
@@ -237,6 +242,34 @@ float Student::adjusted_test(int i) const {
       return a;
   else
       return (a-x0) / float(x1-x0) * (y1-y0) + y0;
+}
+
+
+float Student::adjusted_exam(int i) const {
+  assert (i >= 0 && i <  GRADEABLES[GRADEABLE_ENUM::EXAM].getCount());
+  float a = getGradeableItemGrade(GRADEABLE_ENUM::EXAM,i).getValue();
+
+  int x0, x1, y0, y1;
+
+  x0 = 1;
+  x1 = 124;
+  y0 = 20;
+  y1 = 125;
+
+  if(a == 0 or a >= x1)
+      return a;
+  else
+      return (a-x0) / float(x1-x0) * (y1-y0) + y0;
+}
+
+
+float Student::adjusted_exam_pct() const {
+  float sum = 0;
+  for (int i = 0; i < GRADEABLES[GRADEABLE_ENUM::EXAM].getCount(); i++) {
+    sum += adjusted_exam(i);
+  }
+  float answer =  100 * GRADEABLES[GRADEABLE_ENUM::EXAM].getPercent() * sum / float (GRADEABLES[GRADEABLE_ENUM::EXAM].getMaximum());
+  return answer;
 }
 
 
@@ -442,25 +475,30 @@ std::string Student::grade(bool flag_b4_moss, Student *lowest_d) const {
 
   float over = overall();
   if (flag_b4_moss) {
+    std::cout << "B4 MOSS" << std::endl;
     over = overall_b4_moss();
   }
 
+  // // some criteria that might indicate automatica failure of course
+  // // (instructor can override with manual grade)
+  // int failed_lab   = (GradeablePercent(GRADEABLE_ENUM::LAB)       < 1.01 * lowest_d->GradeablePercent(GRADEABLE_ENUM::LAB)       ) ? true : false;
+  // int failed_hw    = (GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  < 0.95 * lowest_d->GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  ) ? true : false;
+  // int failed_testA = (GradeablePercent(GRADEABLE_ENUM::TEST)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST)      ) ? true : false;
+  // int failed_testB = (GradeablePercent(GRADEABLE_ENUM::EXAM)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM)      ) ? true : false;
+  // int failed_testC = (GradeablePercent(GRADEABLE_ENUM::TEST) + GradeablePercent(GRADEABLE_ENUM::EXAM) <
+  //                     0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST) + lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM) ) ? true : false;
+  // if (failed_lab || failed_hw ||
+  //     ( failed_testA +
+  //       failed_testB +
+  //       failed_testC ) > 1) {
+  //   return "F";
+  // }
 
-  // some criteria that might indicate automatica failure of course
-  // (instructor can override with manual grade)
-  int failed_lab   = (GradeablePercent(GRADEABLE_ENUM::LAB)       < 1.01 * lowest_d->GradeablePercent(GRADEABLE_ENUM::LAB)       ) ? true : false;
-  int failed_hw    = (GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  < 0.95 * lowest_d->GradeablePercent(GRADEABLE_ENUM::HOMEWORK)  ) ? true : false;
-  int failed_testA = (GradeablePercent(GRADEABLE_ENUM::TEST)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST)      ) ? true : false;
-  int failed_testB = (GradeablePercent(GRADEABLE_ENUM::EXAM)      < 0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM)      ) ? true : false;
-  int failed_testC = (GradeablePercent(GRADEABLE_ENUM::TEST) + GradeablePercent(GRADEABLE_ENUM::EXAM) <
-                      0.90 * lowest_d->GradeablePercent(GRADEABLE_ENUM::TEST) + lowest_d->GradeablePercent(GRADEABLE_ENUM::EXAM) ) ? true : false;
-  if (failed_lab || failed_hw ||
-      ( failed_testA +
-        failed_testB +
-        failed_testC ) > 1) {
+  float test_exam_points = GradeablePercent(GRADEABLE_ENUM::EXAM) + GradeablePercent(GRADEABLE_ENUM::TEST);
+  if(test_exam_points < 24.45)
+  {
     return "F";
   }
-
 
   // otherwise apply the cutoffs
   if (over >= CUTOFFS["A"])  return "A";
