@@ -793,7 +793,7 @@ void start_table_output( bool for_instructor,
                                        sc->GradeablePercent(g),
                                        sd->GradeablePercent(g));
       if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
-      table.set(myrow,counter++,TableCell(color,grade,2));
+      table.set(myrow,counter++,TableCell(color,grade,4));
     }
     table.set(myrow,counter++,TableCell(grey_divider));
 
@@ -834,7 +834,7 @@ void start_table_output( bool for_instructor,
                                            sc->adjusted_test(j),
                                            sd->adjusted_test(j));
           if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
-          table.set(myrow,counter++,TableCell(color,grade,1,"",0,visible));
+          table.set(myrow,counter++,TableCell(color,grade,4,"",0,visible));
         }
         table.set(myrow,counter++,TableCell(grey_divider));
       }
@@ -851,7 +851,7 @@ void start_table_output( bool for_instructor,
                                            sc->adjusted_exam(j),
                                            sd->adjusted_exam(j));
           if (this_student == STDDEV_STUDENT_POINTER) color="ffffff";
-          table.set(myrow,counter++,TableCell(color,grade,1,"",0,visible));
+          table.set(myrow,counter++,TableCell(color,grade,4,"",0,visible));
         }
         table.set(myrow,counter++,TableCell(grey_divider));
       }
