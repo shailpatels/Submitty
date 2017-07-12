@@ -2,6 +2,7 @@
 
 namespace app\controllers;
 
+use app\libraries\CookieUtils;
 use app\libraries\Core;
 use app\libraries\Output;
 use app\libraries\Utils;
@@ -65,7 +66,7 @@ class AuthenticationController extends AbstractController {
      */
     public function logout() {
         $cookie_id = 'submitty_session_id';
-        Utils::setCookie($cookie_id, '', time() - 3600);
+        CookieUtils::expireCookie($cookie_id);
         $this->core->removeCurrentSession();
         $this->core->redirect($this->core->buildUrl());
     }

@@ -3,6 +3,7 @@
 use app\exceptions\BaseException;
 use app\libraries\AutoLoader;
 use app\libraries\Core;
+use app\libraries\CookieUtils;
 use app\libraries\ExceptionHandler;
 use app\libraries\Logger;
 use app\libraries\Utils;
@@ -123,12 +124,12 @@ if (isset($_COOKIE[$cookie_key])) {
     $logged_in = $core->getSession($cookie['session_id']);
     if (!$logged_in) {
         // delete the stale and invalid cookie
-        Utils::setCookie($cookie_key, "", time() - 3600);
+       CookieUtils::setCookie($cookie_key, "", time() - 3600);
     }
     else {
         if ($cookie['expire_time'] > 0) {
             $cookie['expire_time'] = time() + (7 * 24 * 60 * 60);
-            Utils::setCookie($cookie_key, $cookie, $cookie['expire_time']);
+            CookieUtils::setCookie($cookie_key, $cookie, $cookie['expire_time']);
         }
     }
 }

@@ -10,9 +10,11 @@ use app\exceptions\IOException;
  * Class IniParser
  *
  * Helper to interact with ini files, both reading them in as well as writing out an array
- * to the ini file. Loosely based on austinhyde's IniParser (@link https://github.com/austinhyde/IniParser)
- * however stripped of some of its more advanced (and unnecessary features) as well as slight changes to
- * type handling.
+ * to the ini file. Reading a file is loosely based on austinhyde's IniParser
+ * (@link https://github.com/austinhyde/IniParser) though stripped of some of the more
+ * advanced features of it and changes to the type handling to fit our needs, however
+ * it's still a general parser. The writer is setup specifically for our needs and expected
+ * ini files (ones that have sections, and then stuff under that).
  */
 class IniParser {
     /**
@@ -89,6 +91,10 @@ class IniParser {
     }
 
     /**
+     * Writer function for INI files. This function expects an associative array where the first level
+     * of the array are keys (sections) and that point to arrays which are then the settings for that
+     * section.
+     *
      * @param string $filename
      * @param array  $array
      *
@@ -96,38 +102,28 @@ class IniParser {
     public static function writeFile($filename, $array) {
         $to_write = "";
         foreach ($array as $key => $value) {
-            // is this a section?
             if (is_array($value)) {
-                if (static::isSection($value)) {
-                    if ($to_write != "") {
-                        $to_write .= "\n";
-                    }
-                    $to_write .= "[{$key}]\n";
-                    foreach ($value as $kkey => $vvalue) {
-                        if (is_array($vvalue)) {
-                            foreach ($vvalue as $vvvalue) {
-                                if (is_array($vvvalue)) {
-                                    throw new IniException("Cannot have nested arrays in ini files");
-                                }
-                                static::addElement($to_write, $kkey."[]", $vvvalue);
-                            }
-                        }
-                        else {
-                            static::addElement($to_write, $kkey, $vvalue);
-                        }
-                    }
+                if ($to_write !== "") {
+                    $to_write .= "\n";
                 }
-                else {
-                    foreach ($value as $kkey => $vvalue) {
-                        if (is_array($vvalue)) {
-                            throw new IniException("Cannot have nested arrays in ini files");
+                $to_write .= "[{$key}]\n";
+                foreach ($value as $kkey => $vvalue) {
+                    if (is_array($vvalue)) {
+                        foreach ($vvalue as $kkkey => $vvvalue) {
+                            if (is_array($vvvalue)) {
+                                throw new IniException("Cannot have nested arrays inside array elements");
+                            }
+                            $inner = (is_int($kkkey)) ? "" : $kkkey;
+                            static::addElement($to_write, $kkey . "[{$inner}]", $vvvalue);
                         }
-                        self::addElement($to_write, $key."[]", $vvalue);
+                    }
+                    else {
+                        static::addElement($to_write, $kkey, $vvalue);
                     }
                 }
             }
             else {
-                self::addElement($to_write, $key, $value);
+                throw new IniException("Keys at top level of array are sections and must point to arrays");
             }
         }
 
@@ -152,20 +148,5 @@ class IniParser {
                 $to_write .= "{$value}\n";
             }
         }
-    }
-    /**
-     * Given an array, we test if it might be a section header or just an array
-     * within the
-     * @param $array
-     *
-     * @return bool
-     */
-    private static function isSection($array) {
-        foreach ($array as $key => $value) {
-            if (!is_numeric($key)) {
-                return true;
-            }
-        }
-        return false;
     }
 }

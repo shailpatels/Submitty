@@ -5,7 +5,7 @@ namespace tests\unitTests\app\libraries;
 use \app\libraries\DateUtils;
 
 class DateUtilsTester extends \PHPUnit_Framework_TestCase {
-    public function data() {
+    public function dayDiffsData() {
         return array(
             array(1, "Now", "Tomorrow"),
             array(0, "2017-01-12 19:10:53.000000", "2017-01-12 19:10:53.000000"),
@@ -27,9 +27,37 @@ class DateUtilsTester extends \PHPUnit_Framework_TestCase {
      * @param string $date1
      * @param string $date2
      *
-     * @dataProvider data
+     * @dataProvider dayDiffsData
      */
     public function testCalculateDayDiff($expected, $date1, $date2) {
         $this->assertEquals($expected, DateUtils::calculateDayDiff($date1, $date2));
+    }
+
+    public function timestampData() {
+        return array(
+          array('08-05-1991', true),
+          array('02-29-2016', true),
+          array('06-31-2016', false),
+          array('08/05/1991', true),
+          array('02/29/2016', true),
+          array('06/31/2016', false),
+          array('08-05-91', true),
+          array('02-29-16', true),
+          array('06-31-16', false),
+          array('08/05/91', true),
+          array('02/29/16', true),
+          array('06/31/16', false),
+          array('string', false)
+        );
+    }
+
+    /**
+     * @param $timestamp
+     * @param $expected
+     *
+     * @dataProvider timestampData
+     */
+    public function testValidateTimestamp($timestamp, $expected) {
+        $this->assertEquals($expected, DateUtils::validateTimestamp($timestamp));
     }
 }

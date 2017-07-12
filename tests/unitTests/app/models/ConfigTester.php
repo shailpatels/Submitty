@@ -12,6 +12,7 @@ use app\models\Config;
 class ConfigTester extends \PHPUnit_Framework_TestCase {
     private $core;
 
+    private $config = null;
     private $temp_dir = null;
     private $master = null;
 
@@ -36,7 +37,26 @@ class ConfigTester extends \PHPUnit_Framework_TestCase {
         $this->assertFalse($properties['debug']);
     }
 
-    private function createConfigFile($extra = array()) {
+    private function removeNulls($array) {
+        // Remove any sections or settings that are equal to null
+        // as they're supposed to then "not exist", but can't quite
+        // do that through array_replace_recursive.
+        foreach ($array as $key => $value) {
+            if ($value === null) {
+                unset($array[$key]);
+            }
+            else {
+                foreach ($value as $kkey => $vvalue) {
+                    if ($vvalue === null) {
+                        unset($array[$key][$kkey]);
+                    }
+                }
+            }
+        }
+        return $array;
+    }
+
+    private function createConfigFile($extra = array(), $unset = array()) {
         $this->temp_dir = FileUtils::joinPaths(sys_get_temp_dir(), Utils::generateRandomString());
         FileUtils::createDir($this->temp_dir);
         $course_path = FileUtils::joinPaths($this->temp_dir, "courses", "s17", "csci0000");
@@ -66,7 +86,8 @@ class ConfigTester extends \PHPUnit_Framework_TestCase {
             )
         );
 
-        $config = array_replace_recursive($config, $extra);
+        $config = $this->removeNulls(array_replace_recursive($config, $extra));
+
         IniParser::writeFile($this->master, $config);
 
         $config = array(
@@ -86,7 +107,7 @@ class ConfigTester extends \PHPUnit_Framework_TestCase {
             )
         );
 
-        $config = array_replace_recursive($config, $extra);
+        $config = $this->removeNulls(array_replace_recursive($config, $extra));
         IniParser::writeFile($course, $config);
     }
 

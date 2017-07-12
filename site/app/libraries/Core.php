@@ -292,7 +292,7 @@ class Core {
                 // Set the cookie to last for 7 days
                 $cookie_data = array('session_id' => $session_id);
                 $cookie_data['expire_time'] = ($persistent_cookie === true) ? time() + (7 * 24 * 60 * 60) : 0;
-                if (Utils::setCookie($cookie_id, $cookie_data, $cookie_data['expire_time']) === false) {
+                if (CookieUtils::setCookie($cookie_id, $cookie_data, $cookie_data['expire_time']) === false) {
                     return false;
                 }
             }

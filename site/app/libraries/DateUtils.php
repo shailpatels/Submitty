@@ -11,7 +11,6 @@ use \DateInterval;
  * Utility functions for interacting with dates and times
  */
 class DateUtils {
-    
     /**
      * Given two dates, give the interval of time in days between these two times. Any partial "days" are rounded
      * up to the nearest day in the positive direction. Thus if there's a difference of 2 days and 3 hours, then
@@ -45,35 +44,31 @@ class DateUtils {
     }
 
     public static function validateTimestamp($timestamp) {
-    //IN:  $timestamp is actually a date string, not a Unix timestamp.
-    //OUT: TRUE when date string conforms to an accetpable pattern
-    //      FALSE otherwise.
-    //PURPOSE: Validate string to (1) be a valid date and (2) conform to specific
-    //         date patterns.
-    //         'm-d-Y' -> mm-dd-yyyy
-    //         'm-d-y' -> mm-dd-yy
-    //         'm/d/Y' -> mm/dd/yyyy
-    //         'm/d/y' -> mm/dd/yy
+        /**
+         * Given a timestamp string, make sure that it is in a valid timestamp that
+         * conforms to some specific date patterns. These patterns are:
+         *      1) 'm-d-Y' -> mm-dd-yyyy
+         *      3) 'm/d/Y' -> mm/dd/yyyy
+         *      2) 'm-d-y' -> mm-dd-yy
+         *      4) 'm/d/y' -> mm/dd/yy
+         * We check that the inputted string is a valid pattern and is a date
+         * that actually exists, returning TRUE if this is the case, else FALSE.
+         *
+         * ex: 02-29-2016 is valid, while "06-31-2016" is not as 2016 was a leap
+         * year so February had 29 days, while June only ever has 30 days.
+         *
+         * @param string
+         * @return bool
+         */
 
-        //This bizzare/inverted switch-case block actually does work in PHP.
-        //This operates as a form of "white list" of valid patterns.
-        //This checks to ensure a date pattern is acceptable AND the date actually
-        //exists.  e.g. "02-29-2016" is valid, while "06-31-2016" is not.
-        //That is, 2016 is a leap year, but June has only 30 days.
-        $tmp = array(date_create_from_format('m-d-Y', $timestamp),
-                     date_create_from_format('m/d/Y', $timestamp),
-                     date_create_from_format('m-d-y', $timestamp),
-                     date_create_from_format('m/d/y', $timestamp));
+        $formats = array('m-d-Y', 'm-d-y', 'm/d/Y', 'm/d/y');
 
-        switch (true) {
-        case ($tmp[0] && $tmp[0]->format('m-d-Y') === $timestamp):
-        case ($tmp[1] && $tmp[1]->format('m/d/Y') === $timestamp):
-        case ($tmp[2] && $tmp[2]->format('m-d-y') === $timestamp):
-        case ($tmp[3] && $tmp[3]->format('m/d/y') === $timestamp):
-            return true;
-        default:
-            return false;
+        foreach ($formats as $format) {
+            $datetime = date_create_from_format($format, $timestamp);
+            if ($datetime !== false && $datetime->format($format) === $timestamp) {
+                return true;
+            }
         }
-        return true;
+        return false;
     }
 }

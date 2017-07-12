@@ -8,11 +8,11 @@ abstract class GradeableType{
     const NUMERIC_TEXT    = 2;
     
     /**
-     * @param GradeableType $type
+     * @param GradeableType|int $type
      *
      * @return string
      */
-    public static function typeToString(GradeableType $type) {
+    public static function typeToString($type) {
         switch($type) {
             case static::ELECTRONIC_FILE:
                 return "Electronic File";
@@ -36,7 +36,7 @@ abstract class GradeableType{
                 return static::ELECTRONIC_FILE;
             case "Checkpoints":
                 return static::CHECKPOINTS;
-            case "Numeric":
+            case "Numeric/Text":
                 return static::NUMERIC_TEXT;
             default:
                 throw new \InvalidArgumentException("Invalid type");
