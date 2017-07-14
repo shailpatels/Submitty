@@ -34,3 +34,8 @@ their relevant licenses.
 &nbsp;&nbsp;&nbsp;&nbsp;Copyright (c) 2011-2016 Twitter, Inc.  
 &nbsp;&nbsp;&nbsp;&nbsp;https://getbootstrap.com/  
 &nbsp;&nbsp;&nbsp;&nbsp;[MIT License](https://github.com/twbs/bootstrap/blob/master/LICENSE)
+
+#### Sortable
+&nbsp;&nbsp;&nbsp;&nbsp;Copyright (c) Lebedev Konstantin
+&nbsp;&nbsp;&nbsp;&nbsp;http://rubaxa.github.io/Sortable/
+&nbsp;&nbsp;&nbsp;&nbsp;[MIT License](https://github.com/RubaXa/Sortable/blob/master/README.md)

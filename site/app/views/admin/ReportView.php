@@ -43,6 +43,17 @@ class ReportView extends AbstractView {
                     <button onclick="location.href='{$this->core->buildUrl(array('component' => 'admin', 'page' => 'reports', 'action' => 'csv'))}'" class="btn btn-primary" style="width:100%;position:absolute;top:50%;transform:translate(0,-50%);">Generate CSV Reports</button>
                 </td>
             </tr>
+            <tr class="bar"></tr>
+            <tr class="bar"></tr>
+            <tr>
+                <td width="50%">
+                    <p>Pushing this button will allow you to generate a customization.json file for use with Rainbow Grades. </p>
+                </td>
+                <td width="5%"> </td>
+                <td width="45%" style="position:relative">
+                    <button onclick="location.href='{$this->core->buildUrl(array('component' => 'admin', 'page' => 'reports', 'action' => 'customization'))}'" class="btn btn-primary" style="width:100%;position:absolute;top:50%;transform:translate(0,-50%);">Generate customization.json</button>
+                </td>
+            </tr>
         <tbody>
     </table>
 </div>

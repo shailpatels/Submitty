@@ -8,6 +8,7 @@ use app\libraries\Output;
 use app\models\HWReport;
 use app\models\GradeSummary;
 use app\models\LateDaysCalculation;
+use app\models\RainbowCustomization;
 
 /*
 use app\report\HWReportView;
@@ -28,6 +29,9 @@ class ReportController extends AbstractController {
                 break;
             case 'hwreport':
                 $this->generateHWReports();
+                break;
+            case 'customization':
+                $this->generateCustomization();
                 break;
             default:
                 $this->core->getOutput()->showError("Invalid action request for controller ".get_class($this));
@@ -112,6 +116,30 @@ class ReportController extends AbstractController {
         $hw_report->generateAllReports();
         $_SESSION['messages']['success'][] = "Successfully Generated HWReports";
         $this->core->getOutput()->renderOutput(array('admin', 'Report'), 'showReportUpdates');
+    }
+
+    public function generateCustomization(){
+        $customization = new RainbowCustomization($this->core);
+        $customization->buildCustomization();
+        if(isset($_POST["generate_json"])){
+            $customization->processForm();
+            if($customization->error()){
+                $this->core->getOutput()->renderOutput(array('admin','RainbowCustomization'),'printError',$customization->getErrorMessages());
+            }
+            else {
+                //TODO: May want this to just be customization.json or to include the date.
+                $filename = $this->core->getConfig()->getCourse() . "_customization.json";
+
+                //TODO: Enable this when ready
+                //$this->core->renderFile($customization->getCustomizationJSON(),$filename);
+                $this->core->getOutput()->renderOutput(array('admin', 'RainbowCustomization'), 'printCompletedCustomization', $filename);
+            }
+        }
+        else{
+            $this->core->getOutput()->renderOutput(array('admin','RainbowCustomization'),'printForm',$customization->getCustomizationData());
+        }
+
+
     }
 }
 
