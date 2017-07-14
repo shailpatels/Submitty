@@ -12,7 +12,7 @@ class RainbowCustomizationView extends AbstractView{
 <script type="text/javascript">
     function ExtractBuckets(){
         var x = new Array();
-        var bucket_list = $("#buckets li");
+        var bucket_list = $("#buckets_used_list li");
         bucket_list.each(function(idx,li){
             x.push($(li).text());
         })        
@@ -22,6 +22,19 @@ class RainbowCustomizationView extends AbstractView{
         $("#custom_form").submit();
         return true;
     }
+    
+    function BalanceLists(){
+        var max_h = Math.max($("#buckets_used").height(),$("#buckets_available").height());
+        $("#list_wrapper").height(max_h);
+        console.log("Fired balance lists");
+    }
+    
+    $(document).ready(function(){
+        BalanceLists();
+    })
+    
+    //$("#buckets_used_list").change(function(){BalanceLists();});
+    //$("#buckets_available_list").change(function(){BalanceLists();});
 </script>
 
 <div class="content">
@@ -36,15 +49,32 @@ If you'd like to try submitting something...
 <form id="custom_form" method="post" action="">
 <input type="hidden" id="generate_json" name="generate_json" value="true" />
 Fake text box: <input type="text" name="demo_text" value="" /><br />
-<ol id="buckets">
+HTML;
+        $return .= <<< HTML
+<input type="submit" name="generate_json2" value="Submit" onclick="ExtractBuckets();"/>
+</form>
+<div id="list_wrapper">
+<!--<div id="buckets_used">-->
+<div style="width50%;float:left" id="buckets_used">
+<h3>Assigned Buckets</h3>
+<ol id="buckets_used_list" style="min-height:50px">
+</ol>
+</div>
+HTML;
+
+        $return .= <<< HTML
+<!--<div style="float:right;position: relative; right: 50px;" id="buckets_available">-->
+<div style="width:50%;float:right;" id="buckets_available">
+<h3>Available Buckets</h3>
+<ol id="buckets_available_list" style="min-height:50px">
 HTML;
         foreach(array_keys($customization_data) as $bucket){
             $return .= "<li>$bucket</li>";
         }
         $return .= <<< HTML
 </ol>
-<input type="submit" name="generate_json2" value="Submit" onclick="ExtractBuckets();"/>
-</form>
+</div>
+</div>
 </div>
 
 <style type="text/css">
@@ -54,8 +84,10 @@ HTML;
 </style>
 
 <script type="text/javascript">
-    var el = document.getElementById('buckets');
-    var sortable = Sortable.create(el);   
+    var el_available = document.getElementById('buckets_available_list');
+    var sortable_available = Sortable.create(el_available,{group:"bucket_group",onSort:function (evt){BalanceLists();}});
+    var el_used = document.getElementById('buckets_used_list');
+    var sortable_used = Sortable.create(el_used,{group:"bucket_group",onSort:function (evt){BalanceLists();}});
 </script>
 
 HTML;
