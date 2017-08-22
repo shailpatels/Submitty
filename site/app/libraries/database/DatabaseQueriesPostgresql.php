@@ -280,6 +280,7 @@ SELECT";
   egd.autograding_hidden_non_extra_credit,
   egd.autograding_hidden_extra_credit,
   egd.submission_time,
+  egd.autograding_complete,
   egv.highest_version
 FROM users AS u
 NATURAL JOIN gradeable AS g";

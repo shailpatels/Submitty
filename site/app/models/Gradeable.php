@@ -82,6 +82,7 @@ use app\libraries\Utils;
  * @method void setGdId(int $gd_id)
  * @method \DateTime getUserViewedDate()
  * @method float getTotalPeerGradingNonExtraCredit()
+ * @method bool getAutogradingComplete()
  */
 class Gradeable extends AbstractModel {
     
@@ -280,6 +281,8 @@ class Gradeable extends AbstractModel {
     
     protected $total_peer_grading_non_extra_credit = 0;
     protected $total_peer_grading_extra_credit=0;
+    
+    protected $autograding_complete = false;
 
     /** @property @var \app\models\User|null */
     protected $user = null;
@@ -338,6 +341,7 @@ class Gradeable extends AbstractModel {
                 $this->graded_auto_non_hidden_extra_credit = floatval($details['autograding_non_hidden_extra_credit']);
                 $this->graded_auto_hidden_non_extra_credit = floatval($details['autograding_hidden_non_extra_credit']);
                 $this->graded_auto_hidden_extra_credit = floatval($details['autograding_hidden_extra_credit']);
+                $this->autograding_complete = floatval($details['autograding_complete']);
                 $this->submission_time = new \DateTime($details['submission_time'], $timezone);
             }
             
