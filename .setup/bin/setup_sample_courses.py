@@ -161,6 +161,7 @@ def main():
             courses_file.write('<a href="'+args.submission_url+'/index.php?semester='+get_current_semester()+'&course='+course_id+'">'+course_id+', '+semester+' '+str(today.year)+'</a>')
             courses_file.write('<br />')
 
+    extra_students.sort(key=lambda user: user.id)
     for course_id in courses.keys():
         course = courses[course_id]
         students = random.sample(extra_students, course.registered_students + course.no_registration_students +
