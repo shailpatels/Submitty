@@ -76,6 +76,9 @@ function replace_fillin_variables {
     sed -i -e "s|__INSTALL__FILLIN__SITE_LOG_PATH__|$SITE_LOG_PATH|g" $1
 
     sed -i -e "s|__INSTALL__FILLIN__AUTHENTICATION_METHOD__|${AUTHENTICATION_METHOD}|g" $1
+    sed -i -e "s|__INSTALL__FILLIN__INSTITUTION__NAME__|$INSTITUTION_NAME|g" $1
+    sed -i -e "s|__INSTALL__FILLIN__INSTITUTION__URL__|$INSTITUTION_URL|g" $1
+    sed -i -e "s|__INSTALL__FILLIN__USERNAME__TEXT__|$USERNAME_CHANGE_TEXT|g" $1
 
     sed -i -e "s|__INSTALL__FILLIN__DEBUGGING_ENABLED__|$DEBUGGING_ENABLED|g" $1
 
@@ -132,6 +135,7 @@ echo -e "Make top level directores & set permissions"
 
 mkdir -p ${SUBMITTY_DATA_DIR}
 mkdir -p ${SUBMITTY_DATA_DIR}/courses
+mkdir -p ${SUBMITTY_DATA_DIR}/vcs
 mkdir -p ${SUBMITTY_DATA_DIR}/logs
 mkdir -p ${SUBMITTY_DATA_DIR}/logs/autograding
 mkdir -p ${SUBMITTY_DATA_DIR}/logs/site_errors
@@ -143,6 +147,8 @@ chown  root:${COURSE_BUILDERS_GROUP}              ${SUBMITTY_DATA_DIR}
 chmod  751                                        ${SUBMITTY_DATA_DIR}
 chown  root:${COURSE_BUILDERS_GROUP}              ${SUBMITTY_DATA_DIR}/courses
 chmod  751                                        ${SUBMITTY_DATA_DIR}/courses
+chown  root:www-data                              ${SUBMITTY_DATA_DIR}/vcs
+chmod  770                                        ${SUBMITTY_DATA_DIR}/vcs
 chown  -R ${HWPHP_USER}:${COURSE_BUILDERS_GROUP}  ${SUBMITTY_DATA_DIR}/logs
 chmod  -R u+rwx,g+rxs,o+x                         ${SUBMITTY_DATA_DIR}/logs
 chown  -R ${HWCRON_USER}:${COURSE_BUILDERS_GROUP} ${SUBMITTY_DATA_DIR}/logs/autograding
@@ -271,8 +277,10 @@ chmod 755 ${SUBMITTY_INSTALL_DIR}/bin
 # copy all of the files
 rsync -rtz  ${SUBMITTY_REPOSITORY}/bin/*   ${SUBMITTY_INSTALL_DIR}/bin/
 #replace necessary variables in the copied scripts
+replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/authentication.py
 replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/adduser.py
 replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/create_course.sh
+replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/generate_repo.py
 replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/grade_item.py
 replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/submitty_grading_scheduler.py
 replace_fillin_variables ${SUBMITTY_INSTALL_DIR}/bin/grade_items_logging.py
@@ -290,9 +298,11 @@ find ${SUBMITTY_INSTALL_DIR}/bin -type f -exec chown root:root {} \;
 find ${SUBMITTY_INSTALL_DIR}/bin -type f -exec chmod 500 {} \;
 
 # all course builders (instructors & head TAs) need read/execute access to these scripts
+chown root:www-data ${SUBMITTY_INSTALL_DIR}/bin/authentication.py
 chown root:${COURSE_BUILDERS_GROUP} ${SUBMITTY_INSTALL_DIR}/bin/regrade.py
 chown root:${COURSE_BUILDERS_GROUP} ${SUBMITTY_INSTALL_DIR}/bin/grading_done.py
 chown root:${COURSE_BUILDERS_GROUP} ${SUBMITTY_INSTALL_DIR}/bin/read_iclicker_ids.py
+chmod 550 ${SUBMITTY_INSTALL_DIR}/bin/authentication.py
 chmod 550 ${SUBMITTY_INSTALL_DIR}/bin/regrade.py
 chmod 550 ${SUBMITTY_INSTALL_DIR}/bin/grading_done.py
 chmod 550 ${SUBMITTY_INSTALL_DIR}/bin/read_iclicker_ids.py
@@ -470,10 +480,7 @@ echo "# DO NOT EDIT -- THIS FILE CREATED AUTOMATICALLY BY INSTALL_SUBMITTY.sh"  
 
 ## NOTE:  the build_config_upload script is hardcoded to run for ~5 minutes and then exit
 minutes=0
-while [ $minutes -lt 60 ]; do
-    printf "%02d  * * * *   ${SUBMITTY_INSTALL_DIR}/bin/build_config_upload.py  >  /dev/null\n"  $minutes  >> ${HWCRON_CRONTAB_FILE}
-    minutes=$(($minutes + 5))
-done
+printf "*/5 * * * *   ${SUBMITTY_INSTALL_DIR}/bin/build_config_upload.py  >  /dev/null\n"  >> ${HWCRON_CRONTAB_FILE}
 
 echo "# DO NOT EDIT -- THIS FILE CREATED AUTOMATICALLY BY INSTALL_SUBMITTY.sh"                >> ${HWCRON_CRONTAB_FILE}
 echo -e "\n\n"                                                                                >> ${HWCRON_CRONTAB_FILE}
