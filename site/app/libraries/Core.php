@@ -96,6 +96,9 @@ class Core {
             if (file_exists($course_ini_path)) {
                 $this->config->loadCourseIni($course_ini_path);
             }
+            else{
+                echo ("unable to verify the existence of " . $course_ini_path);
+            }
         }
     }
 
