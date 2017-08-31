@@ -8,7 +8,14 @@ fi
 
 SOURCE="${BASH_SOURCE[0]}"
 CURRENT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
-DISTRO=$(lsb_release -i | sed -e "s/Distributor\ ID\:\t//g" | tr '[:upper:]' '[:lower:]')
+# Check if lsb_release exists, else fallback to something. Mainly used for docker
+lsb_release >/dev/null 2>&1
+if [ $? = 0 ]; then
+    DISTRO=$(lsb_release -i | sed -e "s/Distributor\ ID\:\t//g" | tr '[:upper:]' '[:lower:]')
+elif [ -f /etc/lsb-release ]; then
+    source /etc/lsb-release
+    DISTRO=$(echo ${DISTRIB_ID} | tr '[:upper:]' '[:lower:]')
+fi
 
 if [ ! -d ${CURRENT_DIR}/${DISTRO} ]; then
     (>&2 echo "Unknown distro: ${DISTRO}")
