@@ -14,7 +14,7 @@ VERSION=$(lsb_release -r | sed -e "s/Release\:\t\([0-9]*\)\.[0-9]*/\1/")
 # Add repo for Java 8
 apt-get install -qy software-properties-common
 add-apt-repository "deb http://ppa.launchpad.net/webupd8team/java/ubuntu xenial main"
-echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
 
 # Some non-free repos

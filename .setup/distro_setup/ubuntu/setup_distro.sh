@@ -8,7 +8,7 @@ fi
 
 apt-get install software-properties-common
 echo "\n" | add-apt-repository ppa:webupd8team/java
-echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys EEA14886
 
 apt-get update
