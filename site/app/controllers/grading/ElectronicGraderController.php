@@ -538,7 +538,7 @@ class ElectronicGraderController extends AbstractController {
             $this->core->redirect($this->core->buildUrl(array('component'=>'grading', 'page'=>'electronic', 'gradeable_id' => $gradeable_id)));
         }
         if($peer && !in_array($who_id, $user_ids_to_grade)) {
-            $_SESSION['messages']['error'][] = "You do not have permission to grade this student. who_id = ".$who_id[$_REQUEST['who_id']];
+            $_SESSION['messages']['error'][] = "You do not have permission to grade this student.";
             $this->core->redirect($this->core->buildUrl(array('component'=>'grading', 'page'=>'electronic', 'gradeable_id' => $gradeable_id)));
         }
 
@@ -568,7 +568,10 @@ class ElectronicGraderController extends AbstractController {
         $gradeable->loadResultDetails();
         $individual = $_REQUEST['individual'];
 
-
+        $anon_ids = $this->core->getQueries()->getAnonId(array($next_id, $prev_id));
+        $next_id = $anon_ids[$next_id];
+        $prev_id = $anon_ids[$prev_id];
+        
         $this->core->getOutput()->addCSS($this->core->getConfig()->getBaseUrl()."/css/ta-grading.css");
         $this->core->getOutput()->renderOutput(array('grading', 'ElectronicGrader'), 'hwGradingPage', $gradeable, $progress, $prev_id, $next_id, $individual);
         $this->core->getOutput()->renderOutput(array('grading', 'ElectronicGrader'), 'popupStudents');
