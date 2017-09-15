@@ -292,6 +292,7 @@ SELECT";
   egd.autograding_non_hidden_extra_credit,
   egd.autograding_hidden_non_extra_credit,
   egd.autograding_hidden_extra_credit,
+  egd.autograding_complete,
   egd.submission_time,
   egv.highest_version
 FROM users AS u
