@@ -173,33 +173,52 @@ class AdminGradeableController extends AbstractController {
             $make_peer_assignments = false;
             if ($edit_gradeable === 1 && $gradeable->getPeerGrading()) {
                 $old_peer_grading_assignments = $this->core->getQueries()->getPeerGradingAssignNumber($gradeable->getId());
-                $make_peer_assignments = ($old_peer_grading_assignments !== $gradeable->getPeerGradeSet());
+                $make_peer_assignments = (($old_peer_grading_assignments !== $gradeable->getPeerGradeSet()) || (isset($_FILES['peer_assign_file']) && $_FILES['peer_assign_file'] !== 0));
                 if ($make_peer_assignments) {
                     $this->core->getQueries()->clearPeerGradingAssignments($_POST['gradeable_id']);
                 }
             }
             if (($edit_gradeable === 0 || $make_peer_assignments) && $gradeable->getPeerGrading()) {
-                $users = $this->core->getQueries()->getAllUsers();
-                $user_ids = array();
-                $grading = array();
-                $peer_grade_set = $gradeable->getPeerGradeSet();
-                foreach($users as $key=>$user) {
-                    // Need to remove non-student users, or users in the NULL section
-                    if ($user->getRegistrationSection() == null) {
-                        unset($users[$key]);
+                if(!isset($_FILES['peer_assign_file']) || $_FILES['peer_assign_file']['size']) {
+                    $users = $this->core->getQueries()->getAllUsers();
+                    $user_ids = array();
+                    $grading = array();
+                    $peer_grade_set = $gradeable->getPeerGradeSet();
+                    foreach($users as $key=>$user) {
+                        // Need to remove non-student users, or users in the NULL section
+                        if ($user->getRegistrationSection() == null) {
+                            unset($users[$key]);
+                        }
+                        else {
+                            $user_ids[] = $user->getId();
+                            $grading[$user->getId()] = array();
+                        }
                     }
-                    else {
-                        $user_ids[] = $user->getId();
-                        $grading[$user->getId()] = array();
+                    $user_number = count($user_ids);
+                    shuffle($user_ids);
+                    for($i = 0; $i<$user_number; $i++) {
+                        for($j = 1; $j <=$peer_grade_set; $j++) {
+                            $grading[$user_ids[$i]][] = $user_ids[($i+$j)%$user_number];
+                        }
                     }
+                    $this->core->addSuccessMessage("Successfully assigned peer graders via random assignment");
                 }
-                $user_number = count($user_ids);
-                shuffle($user_ids);
-                for($i = 0; $i<$user_number; $i++) {
-                    for($j = 1; $j <=$peer_grade_set; $j++) {
-                        $grading[$user_ids[$i]][] = $user_ids[($i+$j)%$user_number];
+                else {
+                    $grading = array();
+                    $assignment = file_get_contents($_FILES['peer_assign_file']['name']);
+                    $assignment = explode("\n", $assignment);
+                    foreach($assignment as $line) {
+                        $line = explode(",", $line);
+                        $grader = $line[0];
+                        $grading[$grader] = array();
+                        unset($line[0]);
+                        foreach($line as $student) {
+                            $grading[$grader][] = $student;
+                        }
                     }
+                    $this->core->addSuccessMessage("Successfully assigned peer graders via file upload");
                 }
+                
                 
                 foreach($grading as $grader=> $assignment) {
                     foreach($assignment as $student) {

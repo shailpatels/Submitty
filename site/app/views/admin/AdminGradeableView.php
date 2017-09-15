@@ -361,7 +361,6 @@ HTML;
                 <br /><br />
                 
                 <div id="rubric_questions" class="bool_val rubric_questions">
-<!--
                 Will this assignment have peer grading?
                 <fieldset>
                     <input type="radio" id="peer_yes_radio" name="peer_grading" value="true" class="peer_yes"
@@ -384,11 +383,13 @@ HTML;
                         How many peers should each student grade?
                         <input style='width: 50px' type='text' name="peer_grade_set" value="{$admin_gradeable->getEgPeerGradeSet()}" class='int_val' />
                         <br />
+                        <input type="hidden" name="MAX_FILE_SIZE" value="50000" />
+                        <input type="file" name="peer_assign_file" />
                         How many points should be associated with a students completion of their grading?
                         <input style='width: 50px' type='text' name="peer_grade_complete_score" value="{$admin_gradeable->getPeerGradeCompleteScore()}" class='int_val' />
                     </div>
                 </fieldset>
-                <br /> -->
+                <br /> 
 
                 Is this a PDF with a page assigned to each component?
                 <fieldset>
@@ -585,11 +586,10 @@ HTML;
 
         $peer_checked = $question->getIsPeer() ? ' checked="checked"' : "";
         $pdf_page = $question->getPage();
-        /*
         $html_output .= <<<HTML
                 <div id="peer_checkbox_{$num}" class="peer_input" {$display_peer_checkboxes}>Peer Component:&nbsp;&nbsp;<input type="checkbox" name="peer_component_{$num}" value="on" class="peer_component" {$peer_checked} /></div>
                 <div id="pdf_page_{$num}" class="pdf_page_input" {$display_pdf_page_input}>Page:&nbsp;&nbsp;<input type="number" name="page_component_{$num}" value={$pdf_page} class="page_component" max="1000" step="1" style="width:50px; resize:none;" /></div>
-HTML;*/
+HTML;
         if ($num > 1){
         $html_output .= <<<HTML
                 <!--
@@ -2190,9 +2190,7 @@ $('#gradeable-form').on('submit', function(e){
             <br> \
             <input type="radio" id="id_grade_by_down-'+newQ+'" name="grade_by-'+newQ+'" value="count_down" data-question_num="'+newQ+'" onclick="onDeduction(this);"> Grade by count down \
                 <br /> \
-                <!--\
                 <div id="peer_checkbox_'+newQ+'" class="peer_input" '+display+'>Peer Component:&nbsp;&nbsp;<input type="checkbox" name="peer_component_'+newQ+'" value="on" class="peer_component" /></div> \
-                -->\
                 <div id="pdf_page_'+newQ+'" class="pdf_page_input" '+displayPage+'>Page:&nbsp;&nbsp;<input type="number" name="page_component_'+newQ+'" value="1" class="page_component" max="1000" step="1" style="width:50px; resize:none;"/></div> \
                 <!--\
                 <a id="delete-'+newQ+'" class="question-icon" onclick="deleteQuestion('+newQ+');"> \
@@ -2429,7 +2427,7 @@ $('#gradeable-form').on('submit', function(e){
                 return false;
             }
             if (!found_reg_component) {
-                alert("At least one component must be for manual grading");
+                alert("At least one component must be for ta grading");
                 return false;
             }
         }
