@@ -41,7 +41,7 @@ def db_connect():
 def get_all_courses(db_conn):
 	db_cur = db_conn.cursor()
 	db_cur.execute("SELECT course FROM courses WHERE semester='{}'".format(determine_semester()))
-	return [course for row in db_cur.fetchall() for course in row]
+	return [row[0] for row in db_cur.fetchall()]
 
 def determine_semester():
 	today = datetime.date.today()
