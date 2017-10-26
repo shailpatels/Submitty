@@ -13,8 +13,10 @@ DB_PASS = 'hsdbu'
 # ------------------------------------------------------------------------------
 
 class db_sync:
+	"""Sync user data in course databases with master database"""
 
 	def __init__(self):
+		"""Main process"""
 
 		if len(sys.argv) < 2 or sys.argv[1] == 'help':
 			self.print_help()
@@ -24,13 +26,16 @@ class db_sync:
 			self.db_connect()
 			course_list = self.get_all_courses()
 		else:
+			# Validate that courses exist
 			self.db_connect()
-			if sys.argv[1] in self.get_all_courses():
-				course_list = [sys.argv[1]]
-			else:
-				raise SystemExit("Error: '{}' not a valid course.".format(sys.argv[1]))
+			course_list = [course for course in sys.argv[1:] if course in self.get_all_courses()]
+			invalid_course_list = [course for course in sys.argv[1:] if course not in course_list]
 
-		print(course_list)
+			# Check that invalidated_course_list is not empty
+			if invalidated_course_list:
+				# Get user permission to proceed
+				if not self.print_invalid_courses(invalid_course_list):
+					sys.exit(0)
 
 		# Process database sync
 		# Exit
@@ -43,8 +48,7 @@ class db_sync:
 		try:
 			self.DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
 		except:
-			pass
-			#raise SystemExit("ERROR: Cannot connect to Submitty master database")
+			raise SystemExit("ERROR: Cannot connect to Submitty master database")
 
 # ------------------------------------------------------------------------------
 
@@ -79,7 +83,8 @@ class db_sync:
 	def print_help(self):
 		"""Print help message to STDOUT/console"""
 
-		os.system('clear')
+		# Clear console
+		os.system('cls' if os.name=='nt' else 'clear')
 		print("Usage: db_sync.py (help | all | course...)\n");
 		print("Command line tool to sync course databases with master submitty database.\n")
 		print("help:   This help message")
@@ -95,5 +100,21 @@ class db_sync:
 
 # ------------------------------------------------------------------------------
 
+	def print_invalid_courses(self, invalidated_courses):
+		"""
+		When invalid courses are specified, query user to continue processing valid courses
+
+		:param invalidated_courses: list of user specified courses that do not exist in Master DB
+		:type invalidated_courses: list (strings)
+		:return: true when user gives permission to proceed, false otherwise
+		:rtype: boolean
+		"""
+
+		# Clear console
+		os.system('cls' if os.name=='nt' else 'clear')
+
+# ------------------------------------------------------------------------------
+
 if __name__ == "__main__":
 	db_sync()
+
