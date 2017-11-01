@@ -15,8 +15,30 @@ DB_PASS = 'hsdbu'
 class db_sync:
 	"""Sync user data in course databases with master database"""
 
+	MASTER_DB_CONN = None
+	"""psycopg2 connection resource for Submitty master DB"""
+
+	COURSE_DB_CONN = None
+	"""psycopg2 connection resource for a Submitty course DB"""
+
 	def __init__(self):
-		"""Main process"""
+		"""Auto start main process"""
+
+		self.main()
+
+	def __del__(self):
+		"""Cleanup DB connections"""
+
+		if hasattr(self.MASTER_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
+			self.MASTER_DB_CONN.close()
+
+		if hasattr(self.COURSE_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
+			self.COURSE_DB_CONN.close()
+
+# ------------------------------------------------------------------------------
+
+	def main(self):
+		"""Main Process"""
 
 		if len(sys.argv) < 2 or sys.argv[1] == 'help':
 			self.print_help()
@@ -32,13 +54,21 @@ class db_sync:
 			invalid_course_list = [course for course in sys.argv[1:] if course not in course_list]
 
 			# Check that invalidated_course_list is not empty
-			if invalidated_course_list:
+			if invalid_course_list:
 				# Get user permission to proceed
-				if not self.print_invalid_courses(invalid_course_list):
+				# Clear console
+				os.system('cls' if os.name == 'nt' else 'clear')
+				print("The following courses are invalid:" + os.linesep + str(invalid_course_list)[1:-1] + os.linesep)
+				# Check that course_list is empty.
+				if not course_list:
+					raise SystemExit("No valid courses specified.")
+
+				print("Proceed syncing valid courses?" + os.linesep + str(course_list)[1:-1] + os.linesep)
+				if input("Y/[N]:").lower() != 'y':
+					print("exiting...")
 					sys.exit(0)
 
 		# Process database sync
-		# Exit
 
 # ------------------------------------------------------------------------------
 
@@ -46,7 +76,7 @@ class db_sync:
 		"""Establish connection to Submitty Master DB"""
 
 		try:
-			self.DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
+			self.MASTER_DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
 		except:
 			raise SystemExit("ERROR: Cannot connect to Submitty master database")
 
@@ -59,7 +89,7 @@ class db_sync:
 		:rtype: list (string)
 		"""
 
-		db_cur = self.DB_CONN.cursor()
+		db_cur = self.MASTER_DB_CONN.cursor()
 		db_cur.execute("SELECT course FROM courses WHERE semester='{}'".format(self.determine_semester()))
 		return [row[0] for row in db_cur.fetchall()]
 
@@ -84,7 +114,7 @@ class db_sync:
 		"""Print help message to STDOUT/console"""
 
 		# Clear console
-		os.system('cls' if os.name=='nt' else 'clear')
+		os.system('cls' if os.name == 'nt' else 'clear')
 		print("Usage: db_sync.py (help | all | course...)\n");
 		print("Command line tool to sync course databases with master submitty database.\n")
 		print("help:   This help message")
@@ -100,21 +130,5 @@ class db_sync:
 
 # ------------------------------------------------------------------------------
 
-	def print_invalid_courses(self, invalidated_courses):
-		"""
-		When invalid courses are specified, query user to continue processing valid courses
-
-		:param invalidated_courses: list of user specified courses that do not exist in Master DB
-		:type invalidated_courses: list (strings)
-		:return: true when user gives permission to proceed, false otherwise
-		:rtype: boolean
-		"""
-
-		# Clear console
-		os.system('cls' if os.name=='nt' else 'clear')
-
-# ------------------------------------------------------------------------------
-
 if __name__ == "__main__":
 	db_sync()
-
