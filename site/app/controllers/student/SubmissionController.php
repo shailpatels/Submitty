@@ -94,6 +94,7 @@ class SubmissionController extends AbstractController {
                 $loc = array('component' => 'student',
                              'gradeable_id' => $gradeable->getId());
                 $this->core->getOutput()->addBreadcrumb($gradeable->getName(), $this->core->buildUrl($loc));
+                $this->core->getOutput()->disableBuffer();
                 if (!$gradeable->hasConfig()) {
                     $this->core->getOutput()->renderOutput(array('submission', 'Homework'),
                                                            'showGradeableError', $gradeable);
@@ -252,11 +253,10 @@ class SubmissionController extends AbstractController {
         }
 
         $max_size = $gradeable->getMaxSize();
-        // FIX ME:
-        // hard coded for now. in the future, should be obtained from the exam
-        // upload max for server seems to be 10mb
-        $max_size = 10000000;
-
+	if ($max_size < 10000000) {
+	    $max_size = 10000000;
+	}
+	 
         // Error checking of file name
         $file_size = 0;
         if (isset($uploaded_file)) {

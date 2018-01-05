@@ -10,6 +10,10 @@
      border: solid 6px #FFD700;
 }
 
+#footer {
+    z-index: 20;
+}
+
 .grading_toolbar {
     position:relative;
     display: block;
@@ -342,6 +346,10 @@ progress::-webkit-progress-value {
 
 .ta-rubric-table-background {
     background-color: #b3b3b3;
+}
+
+tr.is_publish {
+    background-color: #81D4FA;
 }
 
 .btn-large {
