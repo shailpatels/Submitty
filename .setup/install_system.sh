@@ -179,14 +179,8 @@ echo "Getting JaCoCo..."
 
 pushd ${SUBMITTY_INSTALL_DIR}/JUnit > /dev/null
 
-JACOCO_VER=0.7.10
-# The version of JaCoCo with jacococli.jar is unreleased (not on GitHub)
-#wget https://github.com/jacoco/jacoco/releases/download/${JACOCO_VER}/jacoco-${JACOCO_VER}.zip -o /dev/null > /dev/null 2>&1
-
-# So we get the a specific AppVeyor build
-wget https://ci.appveyor.com/api/buildjobs/6emr9t1gk8ipnxit/artifacts/jacoco%2Ftarget%2Fjacoco-0.7.10.201712280716.zip -o /dev/null > /dev/null 2>&1
-mv jacoco-0.7.10.201712280716.zip jacoco-${JACOCO_VER}.zip
-
+JACOCO_VER=0.8.0
+wget https://github.com/jacoco/jacoco/releases/download/v${JACOCO_VER}/jacoco-${JACOCO_VER}.zip -o /dev/null > /dev/null 2>&1
 unzip jacoco-${JACOCO_VER}.zip > /dev/null
 mv jacoco-${JACOCO_VER}/lib/jacococli.jar jacococli.jar
 rm -rf jacoco-${JACOCO_VER}
