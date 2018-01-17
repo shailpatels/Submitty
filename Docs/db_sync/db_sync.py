@@ -45,7 +45,7 @@ class db_sync:
 			sys.exit(0)
 		elif sys.argv[1] == 'all':
 			# Get complete course list
-			self.db_connect()
+			self.master_db_connect()
 			course_list = self.get_all_courses()
 		else:
 			# Validate that courses exist
@@ -69,22 +69,50 @@ class db_sync:
 					sys.exit(0)
 
 		# Process database sync
+		for index, course in enumerate(course_list):
+
 
 # ------------------------------------------------------------------------------
 
-	def db_connect(self):
-		"""Establish connection to Submitty Master DB"""
+	def master_db_connect(self):
+		"""
+		Establish connection to Submitty Master DB
+		
+		:raises SystemExit:  Master DB connection failed.
+		"""
 
 		try:
 			self.MASTER_DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
 		except:
 			raise SystemExit("ERROR: Cannot connect to Submitty master database")
+			
+# ------------------------------------------------------------------------------
+
+	def course_db_connect(self, course):
+		"""
+		Establish connection to a Submitty course DB
+
+		:param course:   course name
+		:return:         flag indicating connection success or failure
+		:rtype:          boolean
+		"""
+
+		semester = self.determine_semester()
+		db_name = "submitty_{}_{}".format(semester, course)
+
+		try:
+			self.COURSE_DB_CONN = psycopg2.connect("dbname={} user={} host={} password={}".format(db_name, DB_USER, DB_HOST, DB_PASS))
+		except:
+			return False
+
+		return True
 
 # ------------------------------------------------------------------------------
 
 	def get_all_courses(self):
 		"""
 		Retrieve active course list from Master DB
+
 		:return: list of all active courses
 		:rtype: list (string)
 		"""
