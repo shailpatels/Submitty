@@ -1,6 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Submitty Database Sync Command Line Tool
+
+Submitty's database structure works with a "master" database and separate
+databases for each course.  When a user (instructor, grader, student) is added
+or updated for a course, they are first added/updated in the "master" database,
+and then an automatic trigger will execute to ensure the addition/update is also
+applied to the appropriate course database.
+
+Should data between the "master" database and a course database no longer match,
+this tool will reconcile the differences under these rules:
+
+* all user records are determined by the User ID field.
+* user records in the "master" database have precedence over records in the
+  course database.  "master" database records will overwrite inconsistencies
+  found in a course database.
+* users recorded in the "master" database, but not existing in the course
+  database will be copied to the course database
+* users recorded in the course database, but not esixting in the "master"
+  database will be copied over to the "master" database.
+
+**IMPORTANT**
+This tool only works with Postgresql databases.
+
+Requires the ``psycopg2`` library.
+"""
+
 import datetime
 import os
 import psycopg2
@@ -9,7 +36,7 @@ import sys
 # CONFIGURATION ----------------------------------------------------------------
 DB_HOST = 'localhost'
 DB_USER = 'hsdbu'
-DB_PASS = 'hsdbu'
+DB_PASS = 'hsdbu'  # Do NOT use this password in production
 # ------------------------------------------------------------------------------
 
 class db_sync:
@@ -49,15 +76,16 @@ class db_sync:
 			course_list = self.get_all_courses()
 		else:
 			# Validate that courses exist
-			self.db_connect()
-			course_list = [course for course in sys.argv[1:] if course in self.get_all_courses()]
+			self.master_db_connect()
+			all_courses = self.get_all_courses()
+			course_list = [course for course in sys.argv[1:] if course in all_courses]
 			invalid_course_list = [course for course in sys.argv[1:] if course not in course_list]
 
 			# Check that invalidated_course_list is not empty
 			if invalid_course_list:
 				# Get user permission to proceed
 				# Clear console
-				os.system('cls' if os.name == 'nt' else 'clear')
+#				os.system('cls' if os.name == 'nt' else 'clear')
 				print("The following courses are invalid:" + os.linesep + str(invalid_course_list)[1:-1] + os.linesep)
 				# Check that course_list is empty.
 				if not course_list:
@@ -69,15 +97,16 @@ class db_sync:
 					sys.exit(0)
 
 		# Process database sync
-		for index, course in enumerate(course_list):
-
+ 		for index, course in enumerate(course_list):
+ 			self.course_db_connect(course)
+ 			masterdb_users, coursedb_users = self.retrieve_all_users()
 
 # ------------------------------------------------------------------------------
 
 	def master_db_connect(self):
 		"""
 		Establish connection to Submitty Master DB
-		
+
 		:raises SystemExit:  Master DB connection failed.
 		"""
 
@@ -85,7 +114,7 @@ class db_sync:
 			self.MASTER_DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
 		except:
 			raise SystemExit("ERROR: Cannot connect to Submitty master database")
-			
+
 # ------------------------------------------------------------------------------
 
 	def course_db_connect(self, course):
@@ -114,9 +143,10 @@ class db_sync:
 		Retrieve active course list from Master DB
 
 		:return: list of all active courses
-		:rtype: list (string)
+		:rtype:  list (string)
 		"""
 
+		print("hit\n")
 		db_cur = self.MASTER_DB_CONN.cursor()
 		db_cur.execute("SELECT course FROM courses WHERE semester='{}'".format(self.determine_semester()))
 		return [row[0] for row in db_cur.fetchall()]
@@ -127,7 +157,7 @@ class db_sync:
 		"""
 		Build/return semester string.  e.g. "s17" for Spring 2017.
 		:return: The semester string
-		:rtype: string
+		:rtype:  string
 		"""
 
 		today = datetime.date.today()
@@ -135,6 +165,25 @@ class db_sync:
 		year  = str(today.year % 100)
 		# if month <= 5: ... elif month >=8: ... else: ...
 		return 's' + year if month <= 5 else ('f' + year if month >= 8 else 'm' + year)
+
+# ------------------------------------------------------------------------------
+	def retrieve_all_users(self):
+		"""
+		Retrieve all user IDs in both "master" and course databases
+
+		:return: all user IDs in master database, all user IDs in course database
+		:rtype:  tuple (string arrays)
+		"""
+
+		db_cur = self.MASTER_DB_CONN.cursor()
+		db_cur.execute("SELECT user_id FROM users")
+		masterdb_users = db_cur.fetchall()
+
+		db_cur = self.COURSE_DB_CONN.cursor()
+		db_cur.execute("SELECT user_id FROM users")
+		coursedb_users = db_cur.fetchall()
+
+		return masterdb_users, coursedb_users
 
 # ------------------------------------------------------------------------------
 
