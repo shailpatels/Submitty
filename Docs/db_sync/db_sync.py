@@ -6,7 +6,7 @@ Submitty Database Sync Command Line Tool
 
 Submitty's database structure works with a "master" database and separate
 databases for each course.  When a user (instructor, grader, student) is added
-or updated for a course, they are first added/updated in the "master" database,
+or updated to a course, they are first added/updated in the "master" database,
 and then an automatic trigger will execute to ensure the addition/update is also
 applied to the appropriate course database.
 
@@ -23,9 +23,8 @@ this tool will reconcile the differences under these rules:
   database will be copied over to the "master" database.
 
 **IMPORTANT**
-This tool only works with Postgresql databases.
-
-Requires the ``psycopg2`` library.
+* This tool only works with Postgresql databases.
+* Requires the ``psycopg2`` python library.
 """
 
 import datetime
@@ -48,6 +47,9 @@ class db_sync:
 	COURSE_DB_CONN = None
 	"""psycopg2 connection resource for a Submitty course DB"""
 
+	SEMESTER = None
+	"""current semester code (e.g. s18 = Spring 2018)"""
+
 	def __init__(self):
 		"""Auto start main process"""
 
@@ -56,11 +58,8 @@ class db_sync:
 	def __del__(self):
 		"""Cleanup DB connections"""
 
-		if hasattr(self.MASTER_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
-			self.MASTER_DB_CONN.close()
-
-		if hasattr(self.COURSE_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
-			self.COURSE_DB_CONN.close()
+		self.master_db_disconnect()
+		self.course_db_disconnect()
 
 # ------------------------------------------------------------------------------
 
@@ -85,7 +84,7 @@ class db_sync:
 			if invalid_course_list:
 				# Get user permission to proceed
 				# Clear console
-#				os.system('cls' if os.name == 'nt' else 'clear')
+				os.system('cls' if os.name == 'nt' else 'clear')
 				print("The following courses are invalid:" + os.linesep + str(invalid_course_list)[1:-1] + os.linesep)
 				# Check that course_list is empty.
 				if not course_list:
@@ -97,9 +96,19 @@ class db_sync:
 					sys.exit(0)
 
 		# Process database sync
- 		for index, course in enumerate(course_list):
- 			self.course_db_connect(course)
- 			masterdb_users, coursedb_users = self.retrieve_all_users()
+		self.SEMESTER = self.determine_semester()
+		for index, course in enumerate(course_list):
+			self.course_db_connect(course)
+			masterdb_users, coursedb_users = self.retrieve_all_users(course)
+			common_users = [user for user in coursedb_users if user in masterdb_users]
+			masterdb_unique_users = [user for user in masterdb_users if user not in coursedb_users]
+			coursedb_unique_users = [user for user in coursedb_users if user not in masterdb_users]
+			# TO DO: Call functions to send SQL queries
+			# Update master db to course db
+			# insert unique master users to course db
+			# insert unique course users to master db
+			# disconnect from course db
+			self.course_db_disconnect()
 
 # ------------------------------------------------------------------------------
 
@@ -111,9 +120,17 @@ class db_sync:
 		"""
 
 		try:
-			self.MASTER_DB_CONN = psycopg2.connect("dbname='submitty' user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
-		except:
-			raise SystemExit("ERROR: Cannot connect to Submitty master database")
+			self.MASTER_DB_CONN = psycopg2.connect("dbname=submitty user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
+		except Exception as e:
+			raise SystemExit("ERROR: Cannot connect to Submitty master database" + os.linesep + str(e))
+
+# ------------------------------------------------------------------------------
+
+	def master_db_disconnect(self):
+		"""Close an open DB cnnection to "master" DB"""
+
+		if hasattr(self.MASTER_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
+			self.MASTER_DB_CONN.close()
 
 # ------------------------------------------------------------------------------
 
@@ -126,8 +143,7 @@ class db_sync:
 		:rtype:          boolean
 		"""
 
-		semester = self.determine_semester()
-		db_name = "submitty_{}_{}".format(semester, course)
+		db_name = "submitty_{}_{}".format(self.SEMESTER, course)
 
 		try:
 			self.COURSE_DB_CONN = psycopg2.connect("dbname={} user={} host={} password={}".format(db_name, DB_USER, DB_HOST, DB_PASS))
@@ -135,6 +151,14 @@ class db_sync:
 			return False
 
 		return True
+
+# ------------------------------------------------------------------------------
+
+	def course_db_disconnect(self):
+		"""Close an open connecton to a Submitty course DB"""
+
+		if hasattr(self.COURSE_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
+			self.COURSE_DB_CONN.close()
 
 # ------------------------------------------------------------------------------
 
@@ -146,10 +170,28 @@ class db_sync:
 		:rtype:  list (string)
 		"""
 
-		print("hit\n")
 		db_cur = self.MASTER_DB_CONN.cursor()
 		db_cur.execute("SELECT course FROM courses WHERE semester='{}'".format(self.determine_semester()))
 		return [row[0] for row in db_cur.fetchall()]
+
+# ------------------------------------------------------------------------------
+	def retrieve_all_users(self, course):
+		"""
+		Retrieve all user IDs in both "master" and course databases
+
+		:return: all user IDs in master database, all user IDs in course database
+		:rtype:  tuple (string arrays)
+		"""
+
+		db_cur = self.MASTER_DB_CONN.cursor()
+		db_cur.execute("SELECT user_id FROM courses_users where course='{}' and semester='{}'".format(course, self.SEMESTER))
+		masterdb_users = [row[0] for row in db_cur.fetchall()]
+
+		db_cur = self.COURSE_DB_CONN.cursor()
+		db_cur.execute("SELECT user_id FROM users")
+		coursedb_users = [row[0] for row in db_cur.fetchall()]
+
+		return masterdb_users, coursedb_users
 
 # ------------------------------------------------------------------------------
 
@@ -165,25 +207,6 @@ class db_sync:
 		year  = str(today.year % 100)
 		# if month <= 5: ... elif month >=8: ... else: ...
 		return 's' + year if month <= 5 else ('f' + year if month >= 8 else 'm' + year)
-
-# ------------------------------------------------------------------------------
-	def retrieve_all_users(self):
-		"""
-		Retrieve all user IDs in both "master" and course databases
-
-		:return: all user IDs in master database, all user IDs in course database
-		:rtype:  tuple (string arrays)
-		"""
-
-		db_cur = self.MASTER_DB_CONN.cursor()
-		db_cur.execute("SELECT user_id FROM users")
-		masterdb_users = db_cur.fetchall()
-
-		db_cur = self.COURSE_DB_CONN.cursor()
-		db_cur.execute("SELECT user_id FROM users")
-		coursedb_users = db_cur.fetchall()
-
-		return masterdb_users, coursedb_users
 
 # ------------------------------------------------------------------------------
 
