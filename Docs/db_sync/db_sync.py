@@ -43,9 +43,14 @@ class db_sync:
 
 	MASTER_DB_CONN = None
 	"""psycopg2 connection resource for Submitty master DB"""
+	MASTER_DB_CUR  = None
+	"""psycopg2 "cursor" resource for Submitty master DB"""
+
 
 	COURSE_DB_CONN = None
 	"""psycopg2 connection resource for a Submitty course DB"""
+	COURSE_DB_CUR  = None
+	"""psycopg2 "cursor" resource for Submitty course DB"""
 
 	SEMESTER = None
 	"""current semester code (e.g. s18 = Spring 2018)"""
@@ -77,8 +82,8 @@ class db_sync:
 			# Validate that courses exist
 			self.master_db_connect()
 			all_courses = self.get_all_courses()
-			course_list = [course for course in sys.argv[1:] if course in all_courses]
-			invalid_course_list = [course for course in sys.argv[1:] if course not in course_list]
+			course_list = tuple(course for course in sys.argv[1:] if course in all_courses)
+			invalid_course_list = tuple(course for course in sys.argv[1:] if course not in course_list)
 
 			# Check that invalidated_course_list is not empty
 			if invalid_course_list:
@@ -100,9 +105,11 @@ class db_sync:
 		for index, course in enumerate(course_list):
 			self.course_db_connect(course)
 			masterdb_users, coursedb_users = self.retrieve_all_users(course)
-			common_users = [user for user in coursedb_users if user in masterdb_users]
-			masterdb_unique_users = [user for user in masterdb_users if user not in coursedb_users]
-			coursedb_unique_users = [user for user in coursedb_users if user not in masterdb_users]
+			common_users = tuple(user for user in coursedb_users if user in masterdb_users)
+			masterdb_unique_users = tuple(user for user in masterdb_users if user not in coursedb_users)
+			coursedb_unique_users = tuple(user for user in coursedb_users if user not in masterdb_users)
+			self.reconcile_master_course(common_users)
+
 			# TO DO: Call functions to send SQL queries
 			# Update master db to course db
 			# insert unique master users to course db
@@ -121,13 +128,17 @@ class db_sync:
 
 		try:
 			self.MASTER_DB_CONN = psycopg2.connect("dbname=submitty user={} host={} password={}".format(DB_USER, DB_HOST, DB_PASS))
+			self.MASTER_DB_CUR  = self.MASTER_DB_CONN.cursor()
 		except Exception as e:
 			raise SystemExit("ERROR: Cannot connect to Submitty master database" + os.linesep + str(e))
 
 # ------------------------------------------------------------------------------
 
 	def master_db_disconnect(self):
-		"""Close an open DB cnnection to "master" DB"""
+		"""Close an open cursor connection to Submitty "master" DB"""
+
+		if hasattr(self.MASTER_DB_CUR, 'closed') and self.MASTER_DB_CUR.closed == False:
+			self.MASTER_DB_CUR.close()
 
 		if hasattr(self.MASTER_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
 			self.MASTER_DB_CONN.close()
@@ -147,6 +158,7 @@ class db_sync:
 
 		try:
 			self.COURSE_DB_CONN = psycopg2.connect("dbname={} user={} host={} password={}".format(db_name, DB_USER, DB_HOST, DB_PASS))
+			self.COURSE_DB_CUR  = self.COURSE_DB_CONN.cursor()
 		except:
 			return False
 
@@ -155,7 +167,10 @@ class db_sync:
 # ------------------------------------------------------------------------------
 
 	def course_db_disconnect(self):
-		"""Close an open connecton to a Submitty course DB"""
+		"""Close an open cursor and connecton to a Submitty course DB"""
+
+		if hasattr(self.COURSE_DB_CUR, 'closed') and self.COURSE_DB_CUR.closed == False:
+			self.COURSE_DB_CUR.close()
 
 		if hasattr(self.COURSE_DB_CONN, 'closed') and self.MASTER_DB_CONN.closed == 0:
 			self.COURSE_DB_CONN.close()
@@ -170,9 +185,8 @@ class db_sync:
 		:rtype:  list (string)
 		"""
 
-		db_cur = self.MASTER_DB_CONN.cursor()
-		db_cur.execute("SELECT course FROM courses WHERE semester='{}'".format(self.determine_semester()))
-		return [row[0] for row in db_cur.fetchall()]
+		self.MASTER_DB_CUR.execute("SELECT course FROM courses WHERE semester='{}'".format(self.determine_semester()))
+		return tuple(row[0] for row in self.MASTER_DB_CUR.fetchall())
 
 # ------------------------------------------------------------------------------
 	def retrieve_all_users(self, course):
@@ -183,15 +197,32 @@ class db_sync:
 		:rtype:  tuple (string arrays)
 		"""
 
-		db_cur = self.MASTER_DB_CONN.cursor()
-		db_cur.execute("SELECT user_id FROM courses_users where course='{}' and semester='{}'".format(course, self.SEMESTER))
-		masterdb_users = [row[0] for row in db_cur.fetchall()]
+		self.MASTER_DB_CUR.execute("SELECT user_id FROM courses_users where course='{}' and semester='{}'".format(course, self.SEMESTER))
+		masterdb_users = tuple(row[0] for row in self.MASTER_DB_CUR.fetchall())
 
-		db_cur = self.COURSE_DB_CONN.cursor()
-		db_cur.execute("SELECT user_id FROM users")
-		coursedb_users = [row[0] for row in db_cur.fetchall()]
+		self.COURSE_DB_CUR.execute("SELECT user_id FROM users")
+		coursedb_users = tuple(row[0] for row in self.COURSE_DB_CUR.fetchall())
 
 		return masterdb_users, coursedb_users
+
+# ------------------------------------------------------------------------------
+
+	def reconcile_master_course(self, user_list):
+		"""master DB user data overrides course DB user data"""
+
+		# Retrieve data from "master" DB
+		# user_id is primary key (unique record identifier), so there should be only one row per query.
+		for user_id in user_list:
+			try:
+				self.MASTER_DB_CUR.execute("SELECT user_firstname, user_preferred_firstname, user_lastname, user_email FROM users where user_id='{}'".format(user_id))
+				row = list(self.MASTER_DB_CUR.fetchone())
+				self.MASTER_DB_CUR.execute("SELECT user_group, registration_section, manual_registration from courses_users")
+				row.extend(self.MASTER_DB_CUR.fetchone())
+				self.COURSE_DB_CUR.execute("UPDATE users SET user_firstname='{}', user_preferred_firstname='{}', user_lastname='{}', user_email='{}', user_group='{}', registration_section='{}', manual_registration='{}' where user_id='{}'".format(*row, user_id))
+			except:
+				return False
+
+		return True
 
 # ------------------------------------------------------------------------------
 
