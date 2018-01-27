@@ -305,8 +305,8 @@ class db_sync:
 			try:
 				self.COURSE_DB_CUR.execute("SELECT user_firstname, user_preferred_firstname, user_lastname, user_email, user_group, registration_section, manual_registration FROM users WHERE user_id='{}'".format(user_id))
 				row = self.MASTER_DB_CUR.fetchone()
-				self.MASTER_DB_CUR.execute("INSERT INTO users user_id, user_firstname, user_preferred_firstname, user_lastna,e. user_email VALUES ('{}','{}','{}','{}','{}'".format(user_id, *row[0:4]))
-				self.MASTER_DB_CUR.execute("INSERT INTO courses_users semester, course, user_id, user_group, registration_section, manual_registration VALUES ('{}','{}','{}','{}','{}','{}'".format(self.SEMESTER, course, *row[4:]))
+				self.MASTER_DB_CUR.execute("INSERT INTO users (user_id, user_firstname, user_preferred_firstname, user_lastname, user_email) VALUES ('{}','{}','{}','{}','{}')".format(user_id, *row[0:4]))
+				self.MASTER_DB_CUR.execute("INSERT INTO courses_users (semester, course, user_id, user_group, registration_section, manual_registration) VALUES ('{}','{}','{}','{}','{}','{}')".format(self.SEMESTER, course, user_id, *row[4:]))
 			except Exception as e:
 				print (str(e))
 				return False
