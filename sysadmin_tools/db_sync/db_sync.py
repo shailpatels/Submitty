@@ -115,6 +115,11 @@ class db_sync:
 			common_users = tuple(user for user in coursedb_users if user in masterdb_users)
 			masterdb_unique_users = tuple(user for user in masterdb_users if user not in coursedb_users)
 			coursedb_unique_users = tuple(user for user in coursedb_users if user not in masterdb_users)
+			# Greater than 5 discrepancies may indicate a larger data integrity problem.  Do not sync.
+			if len(masterdb_unique_users) + len(coursedb_unique_users) > 5:
+				print("There are greater than five users unique to either master or course DB." + os.linesep +
+				      "There may be serious problems with the databases.  No sync will occur.")
+				sys.exit(0)
 			if common_users:
 				if not self.reconcile_masterdb_coursedb(common_users):
 					print("Error reconciling master and course DBs.")
@@ -306,7 +311,7 @@ class db_sync:
 				self.COURSE_DB_CUR.execute("SELECT user_firstname, user_preferred_firstname, user_lastname, user_email, user_group, registration_section, manual_registration FROM users WHERE user_id='{}'".format(user_id))
 				row = self.MASTER_DB_CUR.fetchone()
 				self.MASTER_DB_CUR.execute("INSERT INTO users (user_id, user_firstname, user_preferred_firstname, user_lastname, user_email) VALUES ('{}','{}','{}','{}','{}')".format(user_id, *row[0:4]))
-				self.MASTER_DB_CUR.execute("INSERT INTO courses_users (semester, course, user_id, user_group, registration_section, manual_registration) VALUES ('{}','{}','{}','{}','{}','{}')".format(self.SEMESTER, course, user_id, *row[4:]))
+				self.MASTER_DB_CUR.execute("INSERT INTO courses_users (semester, course, user_id, user_group, registration_section, manual_registration) VALUES ('{}','{}','{}',{},{},{})".format(self.SEMESTER, course, user_id, *row[4:]))
 			except Exception as e:
 				print (str(e))
 				return False
