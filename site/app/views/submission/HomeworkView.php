@@ -1112,12 +1112,6 @@ HTML;
                 regradeBox.style.display = "block";
                 modal.style.display = "block";
             }  
-            function edit(content, id){
-                document.getElementById("requestTextArea").value = content;
-                document.getElementById("threadID").value = id;
-                regradeBox.style.display = "block";
-                modal.style.display = "block";
-            }
             document.getElementById("cancelRegrade").onclick= function(){
                 regradeBox.style.display = "none";
                 modal.style.display = "none";
@@ -1144,11 +1138,8 @@ HTML;
                 $date = date_create($val['timestamp']);
                 $content = $val['content'];
                 if($first){
-                    $deleteButton = '<input type="button" class="btn btn-default" style="float: right" value="Delete Post" disabled="true">';
                     $class .= " first_post";
                     $first = false;
-                }else{
-                    $deleteButton = '<input type="submit" class="btn btn-default" style="float: right;" value="Delete Post" id="deleteRequestPost">';
                 }
                 $function_date = 'date_format';
                 $return .= <<<HTML
@@ -1159,24 +1150,6 @@ HTML;
 HTML;
                         if($user_id === $user) {
                             $return .= <<<HTML
-                            <input type="button" class="btn btn-default" style="float:right; margin-left:15px;" value="Edit Post" 
-                            onclick="edit('$content','$id')">
-                            <form  method="POST" style="float: right;" action="{$this->core->buildUrl(array('component'=>'student','action'=> 'delete_request_post','thread_id' => $id, 'user' => $user, 'gradeable_id' =>$gradeable_id))}" id="deleteRequestPost">
-                                {$deleteButton}
-                            </form>
-                            <script type = "text/javascript">
-                            $("#deleteRequestPost").click(function(event) {
-                                event.preventDefault();
-                                $.ajax({
-                                    type: "POST",
-                                    url: $("#deleteRequestPost").attr("action"),
-                                    data: $("#deleteRequestPost").serialize(), 
-                                    success: function(data){
-                                       window.location.reload();
-                                    }
-                                });
-                            });
-                            </script>
 HTML;
                         }
                         $return .= <<<HTML
